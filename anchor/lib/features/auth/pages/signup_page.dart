@@ -109,7 +109,10 @@ class SignupPage extends StatelessWidget {
         height: 45,
         decoration: BoxDecoration(
           color: AppTheme.deepTaupe,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
+                    ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 25),
         alignment: Alignment.centerLeft,

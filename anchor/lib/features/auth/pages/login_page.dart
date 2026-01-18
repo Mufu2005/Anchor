@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import 'signup_page.dart'; // We will create this next
+import 'lock_screen.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -43,14 +44,20 @@ class LoginPage extends StatelessWidget {
               Center(
                 child: GestureDetector(
                   onTap: () {
-                    // TODO: Handle Login Logic
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LockScreen(),
+                      ),
+                    );
                   },
                   child: Container(
                     width: 80,
                     height: 40,
                     decoration: BoxDecoration(
                       color: AppTheme.mutedTaupe, // The lighter grey/brown
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: 
+                      BorderRadius.circular(20),
                     ),
                     child: const Icon(
                       Icons.arrow_forward_ios_rounded,
@@ -81,7 +88,9 @@ class LoginPage extends StatelessWidget {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF5C4E4E), // Matches the arrow button
+                      color: const Color(
+                        0xFF5C4E4E,
+                      ), // Matches the arrow button
                       borderRadius: BorderRadius.circular(25),
                     ),
                     child: Text(
@@ -117,7 +126,10 @@ class LoginPage extends StatelessWidget {
         height: 45,
         decoration: BoxDecoration(
           color: AppTheme.deepTaupe,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
+                    ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 25),
         alignment: Alignment.centerLeft,
@@ -126,7 +138,8 @@ class LoginPage extends StatelessWidget {
 
           // --- YOUR CUSTOM FONT SETTINGS ---
           style: GoogleFonts.beiruti(
-            textStyle: TextStyle( // <--- PUT YOUR FONT NAME HERE
+            textStyle: TextStyle(
+              // <--- PUT YOUR FONT NAME HERE
               color: AppTheme.fogWhite,
               fontSize: 16,
             ),
