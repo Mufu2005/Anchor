@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For Haptics
 import 'package:google_fonts/google_fonts.dart';
+import 'package:barcode_widget/barcode_widget.dart'; // <--- REQUIRED IMPORT
 import '../../../core/theme/app_theme.dart';
+import '../pages/journal_ticket_view.dart';
 
 class JournalEntryCard extends StatefulWidget {
   final String title;
   final String content;
   final String date;
   final bool isExpanded;
+  final VoidCallback? onEdit;
 
   const JournalEntryCard({
     super.key,
@@ -15,6 +18,7 @@ class JournalEntryCard extends StatefulWidget {
     required this.content,
     required this.date,
     this.isExpanded = false,
+    this.onEdit,
   });
 
   @override
@@ -52,24 +56,48 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // --- HEADER ROW (Title + Barcode Icon) ---
+            // --- HEADER ROW (Title + Barcode) ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: Text(
                     widget.title,
-                    style: GoogleFonts.oswald(
+                    style: GoogleFonts.antonio(
                       color: AppTheme.fogWhite,
                       fontSize: 24,
-                      fontWeight: FontWeight.w400, // Lighter weight as requested
+                      fontWeight: FontWeight.w400,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                // --- BARCODE SECTION (UPDATED) ---
                 if (_isExpanded)
-                  // The "Fake" Barcode in the corner
-                  Icon(Icons.qr_code_2, color: AppTheme.mutedTaupe, size: 40),
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      // Navigate to the Ticket View
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => JournalTicketView(
+                            title: widget.title,
+                            date: widget.date,
+                            // In a real app, pass the actual ID from your database
+                            entryId: "ANCH-8821", 
+                          ),
+                        ),
+                      );
+                    },
+                    child: BarcodeWidget(
+                      barcode: Barcode.code128(),
+                      data: 'ANCH-8821', 
+                      color: AppTheme.mutedTaupe, 
+                      width: 80,
+                      height: 30,
+                      drawText: false,
+                    ),
+                  ),
               ],
             ),
 
@@ -79,10 +107,10 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
             if (_isExpanded) ...[
               Text(
                 widget.content,
-                style: GoogleFonts.robotoMono(
+                style: GoogleFonts.beiruti(
                   color: AppTheme.mutedTaupe,
                   fontSize: 14,
-                  height: 1.5, // Better readability
+                  height: 1.5,
                 ),
               ),
               const SizedBox(height: 20),
@@ -92,25 +120,32 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    widget.date, // e.g. "08:00 21 JAN 2025"
-                    style: GoogleFonts.oswald(
+                    widget.date,
+                    style: GoogleFonts.bangers(
                       color: AppTheme.fogWhite,
                       fontSize: 12,
-                      fontStyle: FontStyle.italic,
+                      letterSpacing: 1.0,
                     ),
                   ),
                   Row(
                     children: [
-                      Icon(Icons.edit_outlined, color: AppTheme.mutedTaupe, size: 20),
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          if (widget.onEdit != null) {
+                            widget.onEdit!(); 
+                          }
+                        },
+                        child: const Icon(Icons.edit_outlined, color: AppTheme.mutedTaupe, size: 25),
+                      ),
                       const SizedBox(width: 10),
-                      Icon(Icons.delete_outline, color: AppTheme.mutedTaupe, size: 20),
+                      const Icon(Icons.delete_outline, color: AppTheme.mutedTaupe, size: 25),
                     ],
                   ),
                 ],
               ),
             ] else ...[
-              // --- COLLAPSED HINT ---
-              // Optional: Show nothing, or a tiny snippet
+              // Collapsed state (empty)
             ],
           ],
         ),

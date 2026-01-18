@@ -5,6 +5,7 @@ import 'package:intl/intl.dart'; // Used for dynamic dates
 import '../../../core/theme/app_theme.dart';
 import '../widgets/sidebar_drawer.dart';
 import '../../journal/pages/journal_page.dart';
+import '../../habits/pages/habits_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -123,21 +124,26 @@ class HomePage extends StatelessWidget {
                     children: [
                       // Habits (Lightning)
                       _buildNavIcon(
-                        'assets/icons/face-id.png',
-                        false,
-                        40,
-                        40,
+                        'assets/icons/cultural-sensitivity.png',
+                        true,
+                        45,
+                        45,
                         onTap: () {
-                          // TODO: Navigate to Habits
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HabitsPage(),
+                            ),
+                          );
                         },
                       ),
 
                       // Time Table (Calendar)
                       _buildNavIcon(
                         'assets/icons/journal.png',
-                        false,
-                        35,
-                        35,
+                        true,
+                        33,
+                        33,
                         onTap: () {
                           Navigator.push(
                             context,
@@ -151,7 +157,7 @@ class HomePage extends StatelessWidget {
                       // HOME (Anchor Logo - Active)
                       _buildNavIcon(
                         'assets/icons/face-id.png',
-                        true,
+                        false,
                         40,
                         40,
                         onTap: () {

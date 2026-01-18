@@ -1,11 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart'; // Required for Date Formatting
 import '../../../core/theme/app_theme.dart';
+import '../models/journal_model.dart'; // Ensure this file exists
 import '../widgets/journal_entry_card.dart';
+import 'journal_editor_page.dart';
 
-class JournalPage extends StatelessWidget {
+class JournalPage extends StatefulWidget {
   const JournalPage({super.key});
+
+  @override
+  State<JournalPage> createState() => _JournalPageState();
+}
+
+class _JournalPageState extends State<JournalPage> {
+  // --- 1. THE DATA (Simulating your Database) ---
+  final List<JournalEntry> _entries = [
+    JournalEntry(
+      id: '1',
+      title: "Dinner with her",
+      // Your long text example
+      content: "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text...",
+      date: DateTime.now(),
+    ),
+    JournalEntry(
+      id: '2',
+      title: "Project Ideas",
+      content: "Drafting the new UI for the Anchor app. Need to focus on the offline-first architecture...",
+      date: DateTime.now().subtract(const Duration(days: 1)),
+    ),
+    JournalEntry(
+      id: '3',
+      title: "Morning Routine",
+      content: "Woke up early. Gym session was good. Need to buy more coffee beans.",
+      date: DateTime.now().subtract(const Duration(days: 2)),
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -14,22 +45,13 @@ class JournalPage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // --- 1. HEADER ---
+            // --- 2. HEADER (Your Design) ---
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 20),
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  // Back / Collapse Arrow
-                  IconButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe, size: 30),
-                  ),
-
-                  // Title "JOURNAL"
+                  // CENTER TITLE
                   Text(
                     "JOURNAL",
                     style: GoogleFonts.bangers(
@@ -39,19 +61,43 @@ class JournalPage extends StatelessWidget {
                     ),
                   ),
 
-                  // Actions (Barcode Scan + Add)
+                  // BUTTONS LAYER
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // The Barcode Scan Icon
+                      // Back Arrow
                       IconButton(
-                        onPressed: () => HapticFeedback.lightImpact(),
-                        icon: const Icon(Icons.qr_code_scanner, color: AppTheme.mutedTaupe, size: 24),
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(context);
+                        },
+                        icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe, size: 30),
                       ),
-                      // const SizedBox(width: 8),
-                      // Add Button
-                      IconButton(
-                        onPressed: () => HapticFeedback.lightImpact(),
-                        icon: const Icon(Icons.add, color: AppTheme.mutedTaupe, size: 30),
+
+                      // Action Icons (Nudged Right)
+                      Transform.translate(
+                        offset: const Offset(8, 0), 
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Barcode Icon
+                            IconButton(
+                              onPressed: () => HapticFeedback.lightImpact(),
+                              icon: Image.asset(
+                                "assets/icons/product.png",
+                                width: 35,
+                                height: 35,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            
+                            // Add Button (Connected to Editor)
+                            IconButton(
+                              onPressed: () => _navigateToEditor(context), // <--- CLICK TO ADD NEW
+                              icon: const Icon(Icons.add, color: AppTheme.mutedTaupe, size: 30),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -59,46 +105,38 @@ class JournalPage extends StatelessWidget {
               ),
             ),
 
-            // --- 2. LIST OF ENTRIES ---
+            // --- 3. AUTOMATED LIST BUILDER ---
             Expanded(
-              child: ListView(
+              child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: const [
-                  // Item 1 (Expanded by default for demo)
-                  JournalEntryCard(
-                    title: "Dinner with her",
-                    isExpanded: true,
-                    date: "08:00 21 JAN 2025",
-                    content: "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters...",
-                  ),
+                itemCount: _entries.length,
+                itemBuilder: (context, index) {
+                  final entry = _entries[index];
                   
-                  // Item 2 (Collapsed)
-                  JournalEntryCard(
-                    title: "Project Ideas",
-                    isExpanded: false,
-                    date: "14:00 20 JAN 2025",
-                    content: "Drafting the new UI for the Anchor app. Need to focus on the offline-first architecture...",
-                  ),
-
-                  // Item 3 (Collapsed)
-                  JournalEntryCard(
-                    title: "Morning Routine",
-                    isExpanded: false,
-                    date: "06:30 20 JAN 2025",
-                    content: "Woke up early. Gym session was good. Need to buy more coffee beans.",
-                  ),
-                ],
+                  return JournalEntryCard(
+                    title: entry.title,
+                    content: entry.content,
+                    // Formats date to: "08:00 21 JAN 2025"
+                    date: DateFormat('HH:mm dd MMM yyyy').format(entry.date).toUpperCase(),
+                    isExpanded: index == 0, // Auto-expand the first item only
+                    
+                    // The Magic: Pass data to Editor automatically
+                    onEdit: () {
+                      _navigateToEditor(context, entry: entry);
+                    },
+                  );
+                },
               ),
             ),
 
-            // --- 3. BOTTOM DROPDOWN (Priority Filter) ---
+            // --- 4. FOOTER (Your Design) ---
             Padding(
               padding: const EdgeInsets.only(bottom: 20, top: 10),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                width: 200, // Fixed width for the pill shape
+                width: 200,
                 decoration: BoxDecoration(
-                  color: AppTheme.deepTaupe, // #5C4E4E
+                  color: AppTheme.deepTaupe,
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
@@ -106,18 +144,34 @@ class JournalPage extends StatelessWidget {
                   children: [
                     Text(
                       "High",
-                      style: GoogleFonts.oswald(
+                      style: GoogleFonts.antonio(
                         color: AppTheme.fogWhite,
                         fontSize: 16,
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe),
+                    const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe, size: 30),
                   ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // --- SMART NAVIGATION HELPER ---
+  void _navigateToEditor(BuildContext context, {JournalEntry? entry}) {
+    HapticFeedback.lightImpact();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => JournalEditorPage(
+          // If 'entry' is null, these will be null (Add Mode)
+          // If 'entry' exists, these will be filled (Edit Mode)
+          initialTitle: entry?.title,
+          initialContent: entry?.content,
         ),
       ),
     );
