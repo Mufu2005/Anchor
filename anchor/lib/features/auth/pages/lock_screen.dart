@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../home/pages/home_page.dart'; // Import the Home Page
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:local_auth/local_auth.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../home/pages/home_page.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
@@ -12,33 +13,54 @@ class LockScreen extends StatefulWidget {
 }
 
 class _LockScreenState extends State<LockScreen> {
-  // Logic to track entered pins (for UI dots only right now)
-  List<String> currentPin = [];
+  final LocalAuthentication auth = LocalAuthentication();
+  bool _isUnlocked = false;
 
-  void _onKeyPressed(String value) {
-    if (value == "0") {
-      // --- TEMPORARY LOGIC: "0" UNLOCKS APP ---
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
-      return;
-    }
-
-    // Visual updates only for other keys
-    setState(() {
-      if (currentPin.length < 4) {
-        currentPin.add(value);
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
   }
 
-  void _onBackspace() {
-    if (currentPin.isNotEmpty) {
-      setState(() {
-        currentPin.removeLast();
-      });
+  Future<void> _authenticate() async {
+    HapticFeedback.mediumImpact();
+
+    try {
+      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
+      final bool canAuthenticate = canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+
+      if (!canAuthenticate) {
+        _navigateToHome();
+        return;
+      }
+
+      final bool didAuthenticate = await auth.authenticate(
+        localizedReason: 'Please authenticate to access Anchor',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: false,
+        ),
+      );
+
+      if (didAuthenticate) {
+        setState(() {
+          _isUnlocked = true;
+        });
+
+        await Future.delayed(const Duration(seconds: 1));
+        
+        _navigateToHome();
+      }
+    } catch (e) {
+      debugPrint("Auth Error: $e");
     }
+  }
+
+  void _navigateToHome() {
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const HomePage()),
+    );
   }
 
   @override
@@ -48,111 +70,67 @@ class _LockScreenState extends State<LockScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const Spacer(flex: 5),
-
-            // 1. THE PIN DOTS
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(4, (index) {
-                // If index is less than currentPin length, it's filled
-                bool isFilled = index < currentPin.length;
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isFilled ? AppTheme.fogWhite : AppTheme.deepTaupe,
-                  ),
-                );
-              }),
+            // --- 1. THE BAR (CORRECTED) ---
+            Center(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 50,
+                height: 4,
+                margin: const EdgeInsets.only(top: 20),
+                
+                // PROPERTIES MOVED INSIDE DECORATION
+                decoration: BoxDecoration(
+                  color: _isUnlocked ? const Color(0xFF00FF41) : const Color(0xFFCD1C18),
+                  borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(4),
+                  bottomRight: Radius.circular(4),
+                  topRight: Radius.circular(4),
+                  topLeft: Radius.circular(4),
+                ),
+                  boxShadow: _isUnlocked
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF00FF41).withOpacity(0.5),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          )
+                        ]
+                      : [],
+                ),
+              ),
             ),
 
-            const Spacer(flex: 3),
+            const Spacer(),
 
-            // 2. THE KEYPAD
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 50),
+            // --- 2. LOCK ICON & BUTTON ---
+            GestureDetector(
+              onTap: _authenticate,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildRow(['1', '2', '3']),
-                  const SizedBox(height: 30),
-                  _buildRow(['4', '5', '6']),
-                  const SizedBox(height: 30),
-                  _buildRow(['7', '8', '9']),
-                  const SizedBox(height: 30),
+                  Image.asset(
+                              "assets/icons/lock.png", // Ensure you have this small icon
+                              width: 70,
+                              height: 70,
+                              color: AppTheme.fogWhite,
+                            ),
                   
-                  // Bottom Row: Biometric - 0 - Backspace
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Biometric Icon (Face ID)
-                      IconButton(
-                        onPressed: () { 
-                            // TODO: Implement Biometric Auth 
-                        },
-                        icon: Image.asset(
-                          'assets/icons/face-id.png',
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.contain,
-                        ),
-                        
-                        
-                      ),
+                  const SizedBox(height: 10),
 
-                      // The "0" Key
-                      _buildNumberButton('0'),
-
-                      // Backspace Icon
-                      IconButton(
-                        onPressed: _onBackspace,
-                        icon: Image.asset(
-                          'assets/icons/backspace.png',
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    _isUnlocked ? "GRANTED" : "UNLOCK",
+                    style: GoogleFonts.antonio(
+                      color: AppTheme.fogWhite,
+                      fontSize: 20,
+                      letterSpacing: 1.0,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Spacer(flex: 3),
+
+            const Spacer(),
           ],
-        ),
-      ),
-    );
-  }
-
-  // Helper to build a row of 3 numbers
-  Widget _buildRow(List<String> keys) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: keys.map((key) => _buildNumberButton(key)).toList(),
-    );
-  }
-
-  // Helper to build a single Number Button
-  Widget _buildNumberButton(String number) {
-    return GestureDetector(
-      onTap: () { 
-        HapticFeedback.lightImpact();
-        _onKeyPressed(number);
-      },
-      child: Container(
-        width: 60, 
-        height: 60,
-        alignment: Alignment.center,
-        color: Colors.transparent, // Ensures the whole area is tappable
-        child: Text(
-          number,
-          style: GoogleFonts.antonio( // Matches the tall font in your screenshot
-            fontSize: 36,
-            fontWeight: FontWeight.w400,
-            color: AppTheme.fogWhite,
-          ),
         ),
       ),
     );

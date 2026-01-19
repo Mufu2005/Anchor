@@ -6,6 +6,8 @@ import '../../../core/theme/app_theme.dart';
 import '../widgets/sidebar_drawer.dart';
 import '../../journal/pages/journal_page.dart';
 import '../../habits/pages/habits_page.dart';
+import '../../tasks/pages/tasks_page.dart';
+import '../../timetable/pages/timetable_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -124,10 +126,10 @@ class HomePage extends StatelessWidget {
                     children: [
                       // Habits (Lightning)
                       _buildNavIcon(
-                        'assets/icons/cultural-sensitivity.png',
+                        'assets/icons/changes.png',
                         true,
-                        45,
-                        45,
+                        42,
+                        42,
                         onTap: () {
                           Navigator.push(
                             context,
@@ -138,7 +140,7 @@ class HomePage extends StatelessWidget {
                         },
                       ),
 
-                      // Time Table (Calendar)
+                      // journal
                       _buildNavIcon(
                         'assets/icons/journal.png',
                         true,
@@ -154,10 +156,10 @@ class HomePage extends StatelessWidget {
                         },
                       ),
 
-                      // HOME (Anchor Logo - Active)
+                      // archive
                       _buildNavIcon(
-                        'assets/icons/face-id.png',
-                        false,
+                        'assets/icons/archive.png',
+                        true,
                         40,
                         40,
                         onTap: () {
@@ -165,25 +167,35 @@ class HomePage extends StatelessWidget {
                         },
                       ),
 
-                      // Tasks (Check)
+                      // Tasks
                       _buildNavIcon(
-                        'assets/icons/face-id.png',
-                        false,
+                        'assets/icons/app.png',
+                        true,
                         40,
                         40,
                         onTap: () {
-                          // TODO: Navigate to Habits
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TasksPage(),
+                            ),
+                          );
                         },
                       ),
 
-                      // Journal (Ticket/Pen)
+                      // timetable
                       _buildNavIcon(
-                        'assets/icons/face-id.png',
-                        false,
+                        'assets/icons/calendar-clock.png',
+                        true,
                         40,
                         40,
                         onTap: () {
-                          // TODO: Navigate to Habits
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TimeTablePage(),
+                            ),
+                          );
                         },
                       ),
                     ],
