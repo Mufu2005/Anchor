@@ -14,14 +14,23 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
+  String _selectedPriority = "All"; // Default view
+
+  final List<String> _priorities = [
+    "All",
+    "High",
+    "Medium",
+    "Low"
+  ];
+
   // --- MOCK DATA ---
   final List<Task> _tasks = [
     Task(
       id: '1',
       title: "Dinner with her",
-      description: "this is gibbresshss ajkl jasldfj ljf lasfklasj fkl",
+      description: "Reservations at 8 PM. Don't be late.",
       date: DateTime.now(),
-      priorityColor: const Color(0xFFCD1C18), // Red
+      priority: "High", // <--- Red Bar
       isCompleted: true,
     ),
     Task(
@@ -29,21 +38,47 @@ class _TasksPageState extends State<TasksPage> {
       title: "Gym Session",
       description: "Leg day focus. Don't skip squats.",
       date: DateTime.now(),
-      priorityColor: Colors.amber, // Yellow
+      priority: "Medium", // <--- Yellow Bar
       isCompleted: false,
     ),
     Task(
       id: '3',
-      title: "Project Review",
-      description: "",
+      title: "Buy Groceries",
+      description: "Milk, Eggs, Coffee.",
       date: DateTime.now(),
-      priorityColor: Colors.green, // Green
-      isCompleted: true,
+      priority: "Low", // <--- Green Bar
+      isCompleted: false,
+    ),
+    Task(
+      id: '4',
+      title: "Submit Report",
+      description: "Finalize the Q1 analysis.",
+      date: DateTime.now(),
+      priority: "High", // <--- Red Bar
+      isCompleted: false,
     ),
   ];
 
+  // --- 3. HELPER: COLOR LOGIC ---
+  Color _getPriorityColor(String priority) {
+    switch (priority) {
+      case "High":
+        return const Color.fromARGB(195, 205, 27, 24); // Red
+      case "Medium":
+        return Colors.amber; // Yellow/Amber
+      case "Low":
+        return const Color(0xFF00FF41); // Green
+      default:
+        return AppTheme.mutedTaupe; // Fallback
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final filteredTasks = _selectedPriority == "All"
+        ? _tasks
+        : _tasks.where((t) => t.priority == _selectedPriority).toList();
+
     return Scaffold(
       backgroundColor: AppTheme.voidBlack,
       body: SafeArea(
@@ -89,31 +124,29 @@ class _TasksPageState extends State<TasksPage> {
             ),
 
             // --- 2. TASK LIST ---
-            Expanded(
+           Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _tasks.length,
+                itemCount: filteredTasks.length,
                 itemBuilder: (context, index) {
-                  final task = _tasks[index];
+                  final task = filteredTasks[index];
+                  
                   return TaskCard(
                     title: task.title,
                     description: task.description,
                     date: DateFormat('HH:mm dd MMM yyyy').format(task.date).toUpperCase(),
-                    priorityColor: task.priorityColor,
-                    isCompleted: task.isCompleted,
                     
-                    // Toggle Checkbox Logic
+                    // AUTOMATIC COLOR ASSIGNMENT
+                    priorityColor: _getPriorityColor(task.priority),
+                    
+                    isCompleted: task.isCompleted,
                     onCheck: () {
                       setState(() {
                         task.isCompleted = !task.isCompleted;
                       });
                     },
-                    onEdit: () {
-                       // TODO: Edit Logic
-                    },
-                    onDelete: () {
-                       // TODO: Delete Logic
-                    },
+                    onEdit: () {},
+                    onDelete: () {},
                   );
                 },
               ),
@@ -123,25 +156,47 @@ class _TasksPageState extends State<TasksPage> {
             Padding(
               padding: const EdgeInsets.only(bottom: 20, top: 10),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 width: 200,
                 decoration: BoxDecoration(
                   color: AppTheme.deepTaupe,
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "High",
-                      style: GoogleFonts.antonio(
-                        color: AppTheme.fogWhite,
-                        fontSize: 16,
-                      ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedPriority,
+                    dropdownColor: AppTheme.deepTaupe,
+                    borderRadius: BorderRadius.circular(20),
+                    icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe),
+                    style: GoogleFonts.antonio(
+                      color: AppTheme.fogWhite,
+                      fontSize: 18,
                     ),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe),
-                  ],
+                    isExpanded: true,
+                    
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedPriority = newValue;
+                        });
+                        HapticFeedback.lightImpact();
+                      }
+                    },
+                    items: _priorities.map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Center(
+                          child: Text(
+                            value,
+                            // Optional: Color the text in the dropdown itself
+                            style: TextStyle(
+                              color : AppTheme.fogWhite,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             ),

@@ -16,6 +16,18 @@ class JournalPage extends StatefulWidget {
 
 class _JournalPageState extends State<JournalPage> {
   // --- 1. THE DATA (Simulating your Database) ---
+
+  String _selectedCategory = "All";
+
+  final List<String> _categories = [
+    "All", 
+    "Personal", 
+    "Work", 
+    "Ideas", 
+    "Health",
+    "study"
+  ];
+
   final List<JournalEntry> _entries = [
     JournalEntry(
       id: '1',
@@ -23,23 +35,30 @@ class _JournalPageState extends State<JournalPage> {
       // Your long text example
       content: "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text...",
       date: DateTime.now(),
+      category: "study",
     ),
     JournalEntry(
       id: '2',
       title: "Project Ideas",
       content: "Drafting the new UI for the Anchor app. Need to focus on the offline-first architecture...",
       date: DateTime.now().subtract(const Duration(days: 1)),
+      category: "study",
     ),
     JournalEntry(
       id: '3',
       title: "Morning Routine",
       content: "Woke up early. Gym session was good. Need to buy more coffee beans.",
       date: DateTime.now().subtract(const Duration(days: 2)),
+      category: "study",
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final filteredEntries = _selectedCategory == "All"
+        ? _entries
+        : _entries.where((e) => e.category == _selectedCategory).toList();
+
     return Scaffold(
       backgroundColor: AppTheme.voidBlack,
       body: SafeArea(
@@ -111,7 +130,7 @@ class _JournalPageState extends State<JournalPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 itemCount: _entries.length,
                 itemBuilder: (context, index) {
-                  final entry = _entries[index];
+                  final entry = filteredEntries[index];
                   
                   return JournalEntryCard(
                     title: entry.title,
@@ -119,7 +138,6 @@ class _JournalPageState extends State<JournalPage> {
                     // Formats date to: "08:00 21 JAN 2025"
                     date: DateFormat('HH:mm dd MMM yyyy').format(entry.date).toUpperCase(),
                     isExpanded: index == 0, // Auto-expand the first item only
-                    
                     // The Magic: Pass data to Editor automatically
                     onEdit: () {
                       _navigateToEditor(context, entry: entry);
@@ -130,28 +148,43 @@ class _JournalPageState extends State<JournalPage> {
             ),
 
             // --- 4. FOOTER (Your Design) ---
-            Padding(
+           Padding(
               padding: const EdgeInsets.only(bottom: 20, top: 10),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 width: 200,
                 decoration: BoxDecoration(
                   color: AppTheme.deepTaupe,
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "High",
-                      style: GoogleFonts.antonio(
-                        color: AppTheme.fogWhite,
-                        fontSize: 16,
-                      ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedCategory,
+                    dropdownColor: AppTheme.deepTaupe,
+                    borderRadius: BorderRadius.circular(20), // Round borders for popup
+                    icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe),
+                    style: GoogleFonts.antonio(
+                      color: AppTheme.fogWhite,
+                      fontSize: 18,
                     ),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe, size: 30),
-                  ],
+                    isExpanded: true, // Centers the text
+                    alignment: Alignment.center, // Ensures text stays centered
+                    
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedCategory = newValue;
+                        });
+                        HapticFeedback.lightImpact();
+                      }
+                    },
+                    items: _categories.map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Center(child: Text(value)), // Centers text in popup
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             ),
