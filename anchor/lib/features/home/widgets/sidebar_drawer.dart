@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Required for Haptics
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../pages/terms_page.dart';
+import '../pages/privacy_page.dart';
 
 class SidebarDrawer extends StatelessWidget {
   const SidebarDrawer({super.key});
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +47,11 @@ class SidebarDrawer extends StatelessWidget {
                   const Spacer(flex: 2),
 
                   // MENU ITEMS (Lighter Fonts)
-                  _buildMenuItem("Contact us"),
-                  _buildMenuItem("Privacy Policy"),
-                  _buildMenuItem("Terms and Condition"),
+                  _buildMenuItem(context, "Contact us","contact"),
+                  _buildMenuItem(context, "Privacy Policy","privacy"),
+                  _buildMenuItem(context, "Terms and Condition","terms"),
                   // const SizedBox(height: 40),
-                  _buildMenuItem("Logout"),
+                  _buildMenuItem(context, "Logout","logout"),
 
                   const Spacer(flex: 3),
 
@@ -106,11 +110,40 @@ class SidebarDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(String text) {
+  Widget _buildMenuItem(BuildContext context, String text, String type) {
     return GestureDetector(
       onTap: () {
-        HapticFeedback.lightImpact(); // <--- VIBRATION ADDED
-        // TODO: Handle Navigation
+        HapticFeedback.lightImpact(); 
+
+        // 1. Decide where to go (or what to do) logic first
+        Widget? pageToOpen;
+
+        switch (type) {
+          case "privacy":
+            pageToOpen = const PrivacyPage();
+            break;
+          case "terms":
+            pageToOpen = const TermsPage();
+            break;
+          case "contact":
+            // Add your contact logic here (e.g., launchUrl)
+            print("Contact clicked");
+            break;
+          case "logout":
+            // Add your logout logic here
+            print("Logout clicked");
+            break;
+          default:
+            break;
+        }
+
+        // 2. If a page was chosen, Navigate to it
+        if (pageToOpen != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => pageToOpen!),
+          );
+        }
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -120,7 +153,7 @@ class SidebarDrawer extends StatelessWidget {
           style: GoogleFonts.antonio(
             color: AppTheme.fogWhite,
             fontSize: 18,
-            fontWeight: FontWeight.w300, // <--- VERY LIGHT WEIGHT
+            fontWeight: FontWeight.w300,
             letterSpacing: 0.5,
           ),
         ),

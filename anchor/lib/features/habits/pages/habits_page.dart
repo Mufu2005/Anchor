@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/habit_model.dart';
 import '../widgets/habit_card.dart';
+import 'new_habit_page.dart';
 
 class HabitsPage extends StatefulWidget {
   const HabitsPage({super.key});
@@ -51,15 +52,28 @@ class _HabitsPageState extends State<HabitsPage> {
                           HapticFeedback.lightImpact();
                           Navigator.pop(context);
                         },
-                        icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe, size: 30),
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: AppTheme.mutedTaupe,
+                          size: 30,
+                        ),
                       ),
                       // Add Button
                       IconButton(
                         onPressed: () {
                           HapticFeedback.lightImpact();
-                          // TODO: Add New Habit Logic
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NewHabitPage(),
+                            ),
+                          );
                         },
-                        icon: const Icon(Icons.add, color: AppTheme.mutedTaupe, size: 30),
+                        icon: const Icon(
+                          Icons.add,
+                          color: AppTheme.mutedTaupe,
+                          size: 30,
+                        ),
                       ),
                     ],
                   ),
@@ -73,9 +87,10 @@ class _HabitsPageState extends State<HabitsPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2, // 2 Columns
-                  childAspectRatio: 1.9, // Controls height vs width ratio (Wider cards)
+                  childAspectRatio:
+                      1.9, // Controls height vs width ratio (Wider cards)
                   crossAxisSpacing: 15, // Gap between cols
-                  mainAxisSpacing: 15,  // Gap between rows
+                  mainAxisSpacing: 15, // Gap between rows
                 ),
                 itemCount: _habits.length,
                 itemBuilder: (context, index) {

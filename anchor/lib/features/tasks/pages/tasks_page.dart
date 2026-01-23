@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/task_model.dart';
 import '../widgets/task_card.dart';
+import 'new_task_page.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -16,12 +17,7 @@ class TasksPage extends StatefulWidget {
 class _TasksPageState extends State<TasksPage> {
   String _selectedPriority = "All"; // Default view
 
-  final List<String> _priorities = [
-    "All",
-    "High",
-    "Medium",
-    "Low"
-  ];
+  final List<String> _priorities = ["All", "High", "Medium", "Low"];
 
   // --- MOCK DATA ---
   final List<Task> _tasks = [
@@ -107,15 +103,28 @@ class _TasksPageState extends State<TasksPage> {
                           HapticFeedback.lightImpact();
                           Navigator.pop(context);
                         },
-                        icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe, size: 30),
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: AppTheme.mutedTaupe,
+                          size: 30,
+                        ),
                       ),
                       // Add Button
                       IconButton(
                         onPressed: () {
                           HapticFeedback.lightImpact();
-                          // TODO: Add Task Logic
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NewTaskPage(),
+                            ),
+                          );
                         },
-                        icon: const Icon(Icons.add, color: AppTheme.mutedTaupe, size: 30),
+                        icon: const Icon(
+                          Icons.add,
+                          color: AppTheme.mutedTaupe,
+                          size: 30,
+                        ),
                       ),
                     ],
                   ),
@@ -124,21 +133,23 @@ class _TasksPageState extends State<TasksPage> {
             ),
 
             // --- 2. TASK LIST ---
-           Expanded(
+            Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 itemCount: filteredTasks.length,
                 itemBuilder: (context, index) {
                   final task = filteredTasks[index];
-                  
+
                   return TaskCard(
                     title: task.title,
                     description: task.description,
-                    date: DateFormat('HH:mm dd MMM yyyy').format(task.date).toUpperCase(),
-                    
+                    date: DateFormat(
+                      'HH:mm dd MMM yyyy',
+                    ).format(task.date).toUpperCase(),
+
                     // AUTOMATIC COLOR ASSIGNMENT
                     priorityColor: _getPriorityColor(task.priority),
-                    
+
                     isCompleted: task.isCompleted,
                     onCheck: () {
                       setState(() {
@@ -167,13 +178,16 @@ class _TasksPageState extends State<TasksPage> {
                     value: _selectedPriority,
                     dropdownColor: AppTheme.deepTaupe,
                     borderRadius: BorderRadius.circular(20),
-                    icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppTheme.mutedTaupe,
+                    ),
                     style: GoogleFonts.antonio(
                       color: AppTheme.fogWhite,
                       fontSize: 18,
                     ),
                     isExpanded: true,
-                    
+
                     onChanged: (String? newValue) {
                       if (newValue != null) {
                         setState(() {
@@ -182,16 +196,16 @@ class _TasksPageState extends State<TasksPage> {
                         HapticFeedback.lightImpact();
                       }
                     },
-                    items: _priorities.map<DropdownMenuItem<String>>((String value) {
+                    items: _priorities.map<DropdownMenuItem<String>>((
+                      String value,
+                    ) {
                       return DropdownMenuItem<String>(
                         value: value,
                         child: Center(
                           child: Text(
                             value,
                             // Optional: Color the text in the dropdown itself
-                            style: TextStyle(
-                              color : AppTheme.fogWhite,
-                            ),
+                            style: TextStyle(color: AppTheme.fogWhite),
                           ),
                         ),
                       );

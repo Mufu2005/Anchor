@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import 'signup_page.dart'; // We will create this next
-import 'lock_screen.dart';
+// import 'lock_screen.dart';
+import '../../home/pages/home_page.dart';
+
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -47,7 +49,8 @@ class LoginPage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const LockScreen(),
+                        // builder: (context) => const LockScreen(),
+                        builder: (context) => const HomePage(),
                       ),
                     );
                   },
