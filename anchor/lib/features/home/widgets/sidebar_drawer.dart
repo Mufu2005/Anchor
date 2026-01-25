@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../pages/terms_page.dart';
 import '../pages/privacy_page.dart';
+import '../pages/support_page.dart';
 
 class SidebarDrawer extends StatelessWidget {
   const SidebarDrawer({super.key});
@@ -47,7 +48,7 @@ class SidebarDrawer extends StatelessWidget {
                   const Spacer(flex: 2),
 
                   // MENU ITEMS (Lighter Fonts)
-                  _buildMenuItem(context, "Contact us","contact"),
+                  _buildMenuItem(context, "Support","contact"),
                   _buildMenuItem(context, "Privacy Policy","privacy"),
                   _buildMenuItem(context, "Terms and Condition","terms"),
                   // const SizedBox(height: 40),
@@ -126,8 +127,7 @@ class SidebarDrawer extends StatelessWidget {
             pageToOpen = const TermsPage();
             break;
           case "contact":
-            // Add your contact logic here (e.g., launchUrl)
-            print("Contact clicked");
+            pageToOpen = const SupportPage();
             break;
           case "logout":
             // Add your logout logic here

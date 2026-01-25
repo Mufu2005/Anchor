@@ -1,80 +1,157 @@
+import 'dart:async'; // Required for StreamSubscription
+import 'package:connectivity_plus/connectivity_plus.dart'; // Required for Internet check
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart'; // Used for dynamic dates
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/sidebar_drawer.dart';
 import '../../journal/pages/journal_page.dart';
 import '../../habits/pages/habits_page.dart';
 import '../../tasks/pages/tasks_page.dart';
 import '../../timetable/pages/timetable_page.dart';
+import '../widgets/quick_add_sheet.dart';
 
-
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // --- CONNECTIVITY STATE ---
+  List<ConnectivityResult> _connectionStatus = [ConnectivityResult.none];
+  final Connectivity _connectivity = Connectivity();
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    initConnectivity();
+    // Listen for network changes
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
+
+  // Initial check
+  Future<void> initConnectivity() async {
+    late List<ConnectivityResult> result;
+    try {
+      result = await _connectivity.checkConnectivity();
+    } on PlatformException catch (_) {
+      return;
+    }
+    if (!mounted) {
+      return Future.value(null);
+    }
+    return _updateConnectionStatus(result);
+  }
+
+  void _updateConnectionStatus(List<ConnectivityResult> result) {
+    setState(() {
+      _connectionStatus = result;
+    });
+  }
+
+  // Helper to determine if we are offline
+  bool get _isOffline => _connectionStatus.contains(ConnectivityResult.none);
+
+  @override
   Widget build(BuildContext context) {
-    // Dynamic Date: Get today's date (e.g., "JAN 7")
-    final String todayDate = DateFormat(
-      'MMM d',
-    ).format(DateTime.now()).toUpperCase();
+    // Dynamic Date
+    final String todayDate = DateFormat('MMM d').format(DateTime.now()).toUpperCase();
 
     return Scaffold(
       backgroundColor: AppTheme.voidBlack,
       drawer: const SidebarDrawer(),
-
-      // We use a Stack to position elements freely (Top, Center, Bottom)
       body: Stack(
         children: [
-          // 1. TOP LEFT MENU ICON
+          // --- 1. CONNECTIVITY BAR (Most Left Side) ---
           Positioned(
-            top: 50,
-            left: 20,
-            child: Builder(
-              builder: (innerContext) {
-                return IconButton(
-                  icon: const Icon(
-                    Icons.menu_rounded,
-                    color: Color(0xFF988686),
-                    size: 30,
+            left: 0,
+            top: 55, // Vertically aligned with the Menu Icon (top: 50 + padding)
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 500),
+              width: 4, // Slim vertical bar
+              height: 40, // Height of the indicator
+              decoration: BoxDecoration(
+                // RED if Offline, GREEN if Online
+                color: _isOffline ? const Color(0xFFCD1C18) : const Color(0xFF00FF41),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(4),
+                  bottomRight: Radius.circular(4),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: (_isOffline ? const Color(0xFFCD1C18) : const Color(0xFF00FF41)).withOpacity(0.6),
+                    blurRadius: 8,
+                    spreadRadius: 1,
                   ),
-                  onPressed: () {
-                    // Use 'innerContext' here, not the main 'context'
-                    Scaffold.of(innerContext).openDrawer();
-                  },
-                );
-              },
+                ],
+              ),
             ),
           ),
 
+          // --- 2. MENU ICON ---
+          Positioned(
+            top: 50,
+            left: 20,
+            right: 20, // Defines the width constraints for the Row
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween, // Pushes items to opposite ends
+              children: [
+                // 1. LEFT: MENU ICON
+                Builder(
+                  builder: (innerContext) {
+                    return IconButton(
+                      icon: const Icon(
+                        Icons.menu_rounded,
+                        color: Color(0xFF988686),
+                        size: 30,
+                      ),
+                      onPressed: () {
+                        // Uses innerContext to find the Scaffold
+                        Scaffold.of(innerContext).openDrawer();
+                      },
+                    );
+                  },
+                ),
+
+                // 2. RIGHT: QUICK ADD MENU
+                const QuickAddMenu(),
+              ],
+            ),
+          ),
+
+          // --- 3. MAIN CONTENT (Welcome Text) ---
           Positioned(
             top: 0,
             bottom: 0,
-            left: 30, // 1. Gives it that "Cinematic" padding from the left edge
+            left: 30,
             right: 20,
             child: Column(
-              mainAxisAlignment:
-                  MainAxisAlignment.center, // Keeps it vertically centered
-              crossAxisAlignment:
-                  CrossAxisAlignment.start, // 2. Aligns text to the LEFT
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   "Welcome back",
                   style: GoogleFonts.antonio(
                     color: AppTheme.fogWhite,
-                    fontSize: 40, // Bumped up slightly for impact
+                    fontSize: 40,
                     fontWeight: FontWeight.w100,
                     letterSpacing: 1.0,
-                    height: 1.0, // Tighter line height
+                    height: 1.0,
                   ),
                 ),
                 const SizedBox(height: 8),
-
-                // 3. The Subtitle with the "Margin to the right" (Indentation)
                 Padding(
-                  // This shifts the text 60px to the right, creating that "Stepped" look
                   padding: const EdgeInsets.only(left: 90.0),
                   child: Text(
                     "Whats on your mind!",
@@ -89,7 +166,7 @@ class HomePage extends StatelessWidget {
             ),
           ),
 
-          // 3. FOOTER ASSEMBLY (Date + Nav Bar)
+          // --- 4. FOOTER (Date + Nav Bar) ---
           Positioned(
             bottom: 0,
             left: 0,
@@ -97,26 +174,21 @@ class HomePage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // The Date "JAN 7"
                 Text(
                   todayDate,
                   style: GoogleFonts.bangers(
                     color: AppTheme.fogWhite,
                     fontSize: 30,
-                    //fontWeight: FontWeight.normal,
-                    fontStyle:
-                        FontStyle.italic, // Matches the slant in screenshot
+                    fontStyle: FontStyle.italic,
                     letterSpacing: 1.5,
                   ),
                 ),
-
-                const SizedBox(height: 10), // Spacing between date and bar
-                // The Navigation Bar Container
+                const SizedBox(height: 10),
                 Container(
                   height: 85,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   decoration: const BoxDecoration(
-                    color: AppTheme.deepTaupe, // #5C4E4E
+                    color: Color(0xFF5C4E4E),
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(10),
                       topRight: Radius.circular(10),
@@ -125,79 +197,36 @@ class HomePage extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Habits (Lightning)
+                      // Habits
                       _buildNavIcon(
                         'assets/icons/changes.png',
-                        true,
-                        42,
-                        42,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const HabitsPage(),
-                            ),
-                          );
-                        },
+                        true, 42, 42,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HabitsPage())),
                       ),
-
-                      // journal
+                      // Journal
                       _buildNavIcon(
                         'assets/icons/journal.png',
-                        true,
-                        33,
-                        33,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const JournalPage(),
-                            ),
-                          );
-                        },
+                        true, 33, 33,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const JournalPage())),
                       ),
-
-                      // archive
+                      
+                      // Archive (Placeholder)
                       _buildNavIcon(
                         'assets/icons/archive.png',
-                        true,
-                        40,
-                        40,
-                        onTap: () {
-                          // TODO: Navigate to Habits
-                        },
+                        true, 40, 40,
+                        onTap: () {},
                       ),
-
                       // Tasks
                       _buildNavIcon(
                         'assets/icons/app.png',
-                        true,
-                        40,
-                        40,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const TasksPage(),
-                            ),
-                          );
-                        },
+                        true, 40, 40,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TasksPage())),
                       ),
-
-                      // timetable
+                      // Timetable
                       _buildNavIcon(
                         'assets/icons/calendar-clock.png',
-                        true,
-                        40,
-                        40,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const TimeTablePage(),
-                            ),
-                          );
-                        },
+                        true, 40, 40,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TimeTablePage())),
                       ),
                     ],
                   ),
@@ -211,30 +240,18 @@ class HomePage extends StatelessWidget {
   }
 
   // Helper widget for Nav Icons
-  Widget _buildNavIcon(
-    String iconPath,
-    bool isActive,
-    double width,
-    double height, {
-    VoidCallback? onTap,
-  }) {
+  Widget _buildNavIcon(String iconPath, bool isActive, double width, double height, {VoidCallback? onTap}) {
     return IconButton(
       onPressed: () {
-        HapticFeedback.lightImpact(); // Add vibration
-        if (onTap != null) {
-          onTap(); // Execute the navigation if provided
-        }
+        HapticFeedback.lightImpact();
+        if (onTap != null) onTap();
       },
-      // Note: "color" property on Image.asset tints the whole PNG.
-      // If your PNGs are already colored, remove the 'color' property below.
       icon: Image.asset(
         iconPath,
         width: width,
         height: height,
         fit: BoxFit.contain,
-        color: isActive
-            ? AppTheme.fogWhite
-            : AppTheme.mutedTaupe.withOpacity(0.6),
+        color: isActive ? AppTheme.fogWhite : AppTheme.mutedTaupe.withOpacity(0.6),
       ),
     );
   }
