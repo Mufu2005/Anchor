@@ -5,11 +5,10 @@ import '../../../core/theme/app_theme.dart';
 import '../pages/terms_page.dart';
 import '../pages/privacy_page.dart';
 import '../pages/support_page.dart';
+import '../pages/settings_page.dart';
 
 class SidebarDrawer extends StatelessWidget {
   const SidebarDrawer({super.key});
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -34,13 +33,21 @@ class SidebarDrawer extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(Icons.person, color: AppTheme.fogWhite, size: 28),
+                      const Icon(
+                        Icons.person,
+                        color: AppTheme.fogWhite,
+                        size: 28,
+                      ),
                       IconButton(
                         onPressed: () {
                           HapticFeedback.lightImpact(); // <--- VIBRATION ADDED
                           Navigator.pop(context);
                         },
-                        icon: const Icon(Icons.arrow_back_ios_new, color: AppTheme.fogWhite, size: 24),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: AppTheme.fogWhite,
+                          size: 24,
+                        ),
                       ),
                     ],
                   ),
@@ -48,13 +55,14 @@ class SidebarDrawer extends StatelessWidget {
                   const Spacer(flex: 2),
 
                   // MENU ITEMS (Lighter Fonts)
-                  _buildMenuItem(context, "Support","contact"),
-                  _buildMenuItem(context, "Privacy Policy","privacy"),
-                  _buildMenuItem(context, "Terms and Condition","terms"),
-                  // const SizedBox(height: 40),
-                  _buildMenuItem(context, "Logout","logout"),
+                  _buildMenuItem(context, "Support", "contact"),
+                  _buildMenuItem(context, "Privacy Policy", "privacy"),
+                  _buildMenuItem(context, "Terms and Condition", "terms"),
+                  _buildMenuItem(context, "Logout", "logout"),
+                  const SizedBox(height: 40),
+                  _buildMenuItem(context, "Settings", "settings"),
 
-                  const Spacer(flex: 3),
+                  const Spacer(flex: 2),
 
                   // USER NAME (Lighter Weight)
                   Text(
@@ -80,19 +88,19 @@ class SidebarDrawer extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Spacer(),
-                  
+
                   RotatedBox(
                     quarterTurns: 3,
                     child: Text(
                       "ANCHOR",
                       style: GoogleFonts.bangers(
                         color: AppTheme.fogWhite,
-                        fontSize: 56,                        
+                        fontSize: 56,
                         letterSpacing: 2.0,
                       ),
                     ),
                   ),
-                  
+
                   const Spacer(),
 
                   Text(
@@ -114,7 +122,7 @@ class SidebarDrawer extends StatelessWidget {
   Widget _buildMenuItem(BuildContext context, String text, String type) {
     return GestureDetector(
       onTap: () {
-        HapticFeedback.lightImpact(); 
+        HapticFeedback.lightImpact();
 
         // 1. Decide where to go (or what to do) logic first
         Widget? pageToOpen;
@@ -132,6 +140,9 @@ class SidebarDrawer extends StatelessWidget {
           case "logout":
             // Add your logout logic here
             print("Logout clicked");
+            break;
+          case "settings":
+            pageToOpen = const SettingsPage();
             break;
           default:
             break;
