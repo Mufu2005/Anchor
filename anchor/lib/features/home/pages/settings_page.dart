@@ -17,6 +17,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _zenMode = false;
   bool _biometricLock = true;
   bool _notifications = true;
+  bool _offlineAccess = true;
   double _hapticIntensity = 1.0;
 
   @override
@@ -167,6 +168,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     SnackBar(content: Text("Cache cleared", style: GoogleFonts.antonio())),
                   );
                 },
+              ),
+
+              _buildSwitchTile(
+                "Offline Access", 
+                "save data locally for offline access", 
+                _offlineAccess, 
+                (val) => setState(() => _offlineAccess = val)
               ),
               
               const SizedBox(height: 40),

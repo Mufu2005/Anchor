@@ -2,8 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 
-class SignupPage extends StatelessWidget {
+// 1. Change to StatefulWidget
+class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
+
+  @override
+  State<SignupPage> createState() => _SignupPageState();
+}
+
+class _SignupPageState extends State<SignupPage> {
+  // 2. Create Controllers
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    // Always dispose controllers to free memory
+    _emailController.dispose();
+    _nameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +37,7 @@ class SignupPage extends StatelessWidget {
             children: [
               const Spacer(flex: 2),
 
-              // 1. HEADER
+              // HEADER
               Center(
                 child: Text(
                   "Signup",
@@ -31,20 +51,41 @@ class SignupPage extends StatelessWidget {
 
               const SizedBox(height: 35),
 
-              // 2. INPUT FIELDS (Email, Name, Password)
-              _buildFigmaTextField(hint: "Email", obscure: false),
+              // 3. Pass controllers to your custom builder
+              _buildFigmaTextField(
+                hint: "Email", 
+                obscure: false, 
+                controller: _emailController // <--- CONNECTED
+              ),
               const SizedBox(height: 20),
-              _buildFigmaTextField(hint: "Name", obscure: false),
+              
+              _buildFigmaTextField(
+                hint: "Name", 
+                obscure: false, 
+                controller: _nameController // <--- CONNECTED
+              ),
               const SizedBox(height: 20),
-              _buildFigmaTextField(hint: "Password", obscure: true),
+              
+              _buildFigmaTextField(
+                hint: "Password", 
+                obscure: true, 
+                controller: _passwordController // <--- CONNECTED
+              ),
 
               const SizedBox(height: 20),
 
-              // 3. THE ARROW BUTTON
+              // THE ARROW BUTTON
               Center(
                 child: GestureDetector(
                   onTap: () {
-                    // TODO: Handle Signup Logic
+                    // 4. FETCH THE STRINGS HERE
+                    String email = _emailController.text;
+                    String name = _nameController.text;
+                    String password = _passwordController.text;
+
+                    print("User Signed Up: $name, $email, $password");
+                    
+                    // Add your signup logic here
                   },
                   child: Container(
                     width: 80,
@@ -64,11 +105,11 @@ class SignupPage extends StatelessWidget {
 
               const Spacer(flex: 3),
 
-              // 4. LOGIN FOOTER BUTTON (Takes you back)
+              // LOGIN FOOTER
               Center(
                 child: GestureDetector(
                   onTap: () {
-                    Navigator.pop(context); // Go back to Login
+                    Navigator.pop(context);
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
@@ -96,37 +137,35 @@ class SignupPage extends StatelessWidget {
     );
   }
 
-  // Reusing the same text field logic
+  // UPDATED WIDGET BUILDER
   Widget _buildFigmaTextField({
     required String hint,
     required bool obscure,
-    double width = 300, // <--- CONTROL THE LENGTH HERE (Default is 300px)
+    required TextEditingController controller, // <--- Add this argument
+    double width = 300,
   }) {
     return Center(
-      // This prevents the box from stretching to the screen edges
       child: Container(
-        width: width, // Applies your custom length
+        width: width,
         height: 45,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration( // Removed AppTheme reference for simplicity in snippet
           color: AppTheme.deepTaupe,
           borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      bottomRight: Radius.circular(30),
-                    ),
+            topLeft: Radius.circular(30),
+            bottomRight: Radius.circular(30),
+          ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 25),
         alignment: Alignment.centerLeft,
         child: TextField(
+          controller: controller, // <--- Assign controller here
           obscureText: obscure,
-
-          // --- YOUR CUSTOM FONT SETTINGS ---
           style: GoogleFonts.beiruti(
-            textStyle: TextStyle( // <--- PUT YOUR FONT NAME HERE
+            textStyle: const TextStyle(
               color: AppTheme.fogWhite,
               fontSize: 16,
             ),
           ),
-
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.beiruti(

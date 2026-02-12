@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/online_db_service.dart'; // <--- Import Service
 import '../../../core/theme/app_theme.dart';
 import '../models/habit_model.dart';
 import '../widgets/habit_card.dart';
@@ -14,13 +15,43 @@ class HabitsPage extends StatefulWidget {
 }
 
 class _HabitsPageState extends State<HabitsPage> {
-  // --- MOCK DATA ---
-  final List<Habit> _habits = [
-    Habit(id: '1', title: "Gym", streak: 6, statusColor: Colors.redAccent),
-    Habit(id: '2', title: "Read", streak: 12, statusColor: Colors.greenAccent),
-    Habit(id: '3', title: "Water", streak: 3, statusColor: Colors.amberAccent),
-    Habit(id: '4', title: "Code", streak: 60, statusColor: Colors.blueAccent),
-  ];
+  final OnlineDbService _db = OnlineDbService();
+  List<Habit> _habits = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchHabits();
+  }
+
+  // --- 1. LOAD DATA ---
+  Future<void> _fetchHabits() async {
+    final data = await _db.getHabits();
+    if (mounted) {
+      setState(() {
+        _habits = data;
+        _isLoading = false;
+      });
+    }
+  }
+
+  // --- 2. DELETE LOGIC ---
+  void _deleteHabit(String id) async {
+    // Optimistic Update: Remove from UI immediately for speed
+    setState(() {
+      _habits.removeWhere((h) => h.id == id);
+    });
+    // Perform actual delete
+    await _db.deleteHabit(id);
+  }
+
+  // --- 3. TAP LOGIC (Increment) ---
+  void _incrementHabit(Habit habit) async {
+    HapticFeedback.mediumImpact();
+    await _db.incrementStreak(habit.id, habit.streak);
+    _fetchHabits(); // Refresh to show new streak/color
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,51 +60,38 @@ class _HabitsPageState extends State<HabitsPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // --- 1. HEADER ---
+            // HEADER (Kept your exact design)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Text(
-                    "HABITS",
-                    style: GoogleFonts.bangers(
-                      color: AppTheme.fogWhite,
-                      fontSize: 32,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
+                  Text("HABITS",
+                      style: GoogleFonts.bangers(
+                          color: AppTheme.fogWhite,
+                          fontSize: 32,
+                          letterSpacing: 1.0)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Back Button
                       IconButton(
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.pop(context);
-                        },
-                        icon: const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: AppTheme.mutedTaupe,
-                          size: 30,
-                        ),
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.keyboard_arrow_down,
+                            color: AppTheme.mutedTaupe, size: 30),
                       ),
-                      // Add Button
                       IconButton(
-                        onPressed: () {
+                        onPressed: () async {
                           HapticFeedback.lightImpact();
-                          Navigator.push(
+                          // Wait for result from NewPage, then refresh
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const NewHabitPage(),
-                            ),
+                                builder: (context) => const NewHabitPage()),
                           );
+                          _fetchHabits();
                         },
-                        icon: const Icon(
-                          Icons.add,
-                          color: AppTheme.mutedTaupe,
-                          size: 30,
-                        ),
+                        icon: const Icon(Icons.add,
+                            color: AppTheme.mutedTaupe, size: 30),
                       ),
                     ],
                   ),
@@ -81,36 +99,34 @@ class _HabitsPageState extends State<HabitsPage> {
               ),
             ),
 
-            // --- 2. GRID OF HABITS ---
+            // GRID
             Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, // 2 Columns
-                  childAspectRatio:
-                      1.9, // Controls height vs width ratio (Wider cards)
-                  crossAxisSpacing: 15, // Gap between cols
-                  mainAxisSpacing: 15, // Gap between rows
-                ),
-                itemCount: _habits.length,
-                itemBuilder: (context, index) {
-                  final habit = _habits[index];
-                  return HabitCard(
-                    title: habit.title,
-                    streak: habit.streak,
-                    statusColor: habit.statusColor,
-                    onTap: () {
-                      // TODO: Open Detail or Increment Streak
-                    },
-                    onEdit: () {
-                      // TODO: Edit Logic
-                    },
-                    onDelete: () {
-                      // TODO: Delete Logic
-                    },
-                  );
-                },
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Colors.red))
+                  : GridView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 1.9,
+                        crossAxisSpacing: 15,
+                        mainAxisSpacing: 15,
+                      ),
+                      itemCount: _habits.length,
+                      itemBuilder: (context, index) {
+                        final habit = _habits[index];
+                        return HabitCard(
+                          title: habit.title,
+                          streak: habit.streak,
+                          statusColor: habit.statusColor, // Calculated dynamically
+                          onTap: () => _incrementHabit(habit),
+                          onEdit: () {
+                             // TODO: Edit
+                          },
+                          onDelete: () => _deleteHabit(habit.id),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
