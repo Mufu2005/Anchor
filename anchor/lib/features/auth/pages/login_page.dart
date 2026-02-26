@@ -1,3 +1,4 @@
+import 'package:anchor/features/auth/pages/setup_key_page.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
@@ -81,7 +82,7 @@ class LoginPage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const SignupPage(),
+                        builder: (context) => const SetupKeyPage(),
                       ),
                     );
                   },

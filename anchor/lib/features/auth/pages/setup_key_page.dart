@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+// --- APP IMPORTS ---
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/encryption_service.dart';
-import '../../home/pages/home_page.dart';
+import 'signup_page.dart'; // <--- Connects to the next step
 
 class SetupKeyPage extends StatefulWidget {
   final bool isFirstTime; 
@@ -26,6 +28,7 @@ class _SetupKeyPageState extends State<SetupKeyPage> {
   void _submitKey() async {
     final text = _keyController.text;
     
+    // 1. VALIDATION
     // Regex: Start to End (^...$) must contain only letters (a-z, A-Z).
     final isAlphabetic = RegExp(r'^[a-zA-Z]+$').hasMatch(text);
     
@@ -46,28 +49,35 @@ class _SetupKeyPageState extends State<SetupKeyPage> {
     setState(() => _isLoading = true);
     HapticFeedback.mediumImpact();
 
+    // 2. SET KEY IN SERVICE (So we can use it immediately)
     await EncryptionService().setKey(text);
 
     if (mounted) {
       if (widget.isFirstTime) {
-        Navigator.pushReplacement(
+        // --- 3. NAVIGATE TO SIGNUP ---
+        // We pass the key so SignupPage can verify/store it in Session
+        Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const HomePage()),
+          MaterialPageRoute(
+            builder: (context) => SignupPage(rawEncryptionKey: text),
+          ),
         );
       } else {
+        // Logic for "Change Key" (Inside Settings)
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
            SnackBar(content: Text("Key updated successfully", style: GoogleFonts.antonio())),
         );
       }
     }
+    
+    setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.voidBlack,
-      // We remove SingleChildScrollView from here to make the layout fixed
       body: SafeArea(
         child: Column(
           children: [
@@ -106,9 +116,7 @@ class _SetupKeyPageState extends State<SetupKeyPage> {
 
             const SizedBox(height: 100),
 
-            // const Spacer(), // Pushes content to middle
-
-            // --- 1. INPUT FIELD ---
+            // --- INPUT FIELD ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: Container(
@@ -140,7 +148,7 @@ class _SetupKeyPageState extends State<SetupKeyPage> {
 
             const SizedBox(height: 40),
 
-            // --- 2. BOOKMARK SUBMIT BUTTON ---
+            // --- SUBMIT BUTTON ---
             GestureDetector(
               onTap: _isLoading ? null : _submitKey,
               child: _isLoading 
@@ -152,22 +160,20 @@ class _SetupKeyPageState extends State<SetupKeyPage> {
               ),
             ),
 
-            // const Spacer(), // Pushes Warning Card to bottom
             const SizedBox(height: 100),
 
-            // --- 3. WARNING CARD (SCROLLABLE) ---
-            // Flexible allows this widget to take remaining space but shrinking if needed
+            // --- WARNING CARD ---
             Flexible(
               child: Container(
                 width: double.infinity,
-                height: 600,
+                // Removed fixed height to let it adapt, added max constraints
+                constraints: const BoxConstraints(maxHeight: 600),
                 margin: const EdgeInsets.all(20),
                 padding: const EdgeInsets.all(25),
                 decoration: BoxDecoration(
                   color: AppTheme.deepTaupe,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                // This SingleChildScrollView makes ONLY the card content scrollable
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   child: Column(

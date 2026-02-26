@@ -15,7 +15,7 @@ class Habit {
     required this.title,
     required this.streak,
     this.lastCompleted,
-    required this.isStrict,
+    required this.isStrict, 
     required this.deadline,
   });
 

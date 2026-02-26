@@ -1,34 +1,118 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_theme.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-// 1. Change to StatefulWidget
+// --- APP IMPORTS ---
+import '../../../core/theme/app_theme.dart';
+import '../../../core/services/encryption_service.dart';
+import '../../../core/services/online_db_service.dart';
+import '../../../core/services/session_manager.dart';
+import '../../home/pages/home_page.dart';
+
 class SignupPage extends StatefulWidget {
-  const SignupPage({super.key});
+  // We accept the key passed from the previous "Setup Key" page
+  final String rawEncryptionKey; 
+
+  const SignupPage({
+    super.key, 
+    required this.rawEncryptionKey
+  });
 
   @override
   State<SignupPage> createState() => _SignupPageState();
 }
 
 class _SignupPageState extends State<SignupPage> {
-  // 2. Create Controllers
+  // 1. CONTROLLERS
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _nicknameController = TextEditingController(); // <--- Added for new logic
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _encryptionKeyController = TextEditingController();
+
+  bool _isLoading = false;
 
   @override
   void dispose() {
-    // Always dispose controllers to free memory
     _emailController.dispose();
     _nameController.dispose();
+    _nicknameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // --- 2. FUNCTIONALITY (THE NEW LOGIC) ---
+  void _handleSignup() async {
+    final email = _emailController.text.trim();
+    final name = _nameController.text.trim();
+    final nickname = _nicknameController.text.trim();
+    final password = _passwordController.text.trim();
+    final encryptionKey = widget.rawEncryptionKey;
+    if (email.isEmpty || name.isEmpty || nickname.isEmpty || password.isEmpty || encryptionKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all fields")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // A. Supabase Auth (Sign Up)
+      // final authRes = await Supabase.instance.client.auth.signUp(
+      //   email: email,
+      //   password: password,
+      // );
+
+      // if (authRes.user == null) throw "Signup Failed";
+
+      // B. Encrypt Data (Using the key passed from previous screen)
+      // Note: EncryptionService key should already be set, but we set it again to be safe
+      await EncryptionService().setKey(widget.rawEncryptionKey);
+
+      final encEmail = EncryptionService().encryptData(email);
+      final encName = EncryptionService().encryptData(name);
+      final encNick = EncryptionService().encryptData(nickname);
+      final encPassword = EncryptionService().encryptData(password);
+      final encKey = EncryptionService().encryptData(encryptionKey);
+
+      // C. Save Profile to DB
+      await OnlineDbService().createProfile(
+        email: encEmail,
+        name: encName,
+        nickname: encNick,
+        password: encPassword,
+        encryption_key: encKey,
+      );
+
+      // D. Start Session (Store plain text for this session)
+      SessionManager().setSession(
+        key: widget.rawEncryptionKey,
+        username: name,
+        nickname: nickname,
+        userId: "null"//authRes.user!.id,
+      );
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
+      }
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.voidBlack,
+      backgroundColor: AppTheme.voidBlack, // Your original background
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
@@ -37,7 +121,7 @@ class _SignupPageState extends State<SignupPage> {
             children: [
               const Spacer(flex: 2),
 
-              // HEADER
+              // --- HEADER ---
               Center(
                 child: Text(
                   "Signup",
@@ -51,42 +135,45 @@ class _SignupPageState extends State<SignupPage> {
 
               const SizedBox(height: 35),
 
-              // 3. Pass controllers to your custom builder
+              // --- INPUT FIELDS (Your Custom Style) ---
+              
+              // 1. Email
               _buildFigmaTextField(
                 hint: "Email", 
                 obscure: false, 
-                controller: _emailController // <--- CONNECTED
+                controller: _emailController
               ),
               const SizedBox(height: 20),
               
+              // 2. Name
               _buildFigmaTextField(
                 hint: "Name", 
                 obscure: false, 
-                controller: _nameController // <--- CONNECTED
+                controller: _nameController
+              ),
+              const SizedBox(height: 20),
+
+              // 3. Nickname (Added to fit logic)
+              _buildFigmaTextField(
+                hint: "Nickname", 
+                obscure: false, 
+                controller: _nicknameController
               ),
               const SizedBox(height: 20),
               
+              // 4. Password
               _buildFigmaTextField(
                 hint: "Password", 
                 obscure: true, 
-                controller: _passwordController // <--- CONNECTED
+                controller: _passwordController
               ),
 
               const SizedBox(height: 20),
 
-              // THE ARROW BUTTON
+              // --- THE ARROW BUTTON (With Logic Attached) ---
               Center(
                 child: GestureDetector(
-                  onTap: () {
-                    // 4. FETCH THE STRINGS HERE
-                    String email = _emailController.text;
-                    String name = _nameController.text;
-                    String password = _passwordController.text;
-
-                    print("User Signed Up: $name, $email, $password");
-                    
-                    // Add your signup logic here
-                  },
+                  onTap: _isLoading ? null : _handleSignup, // <--- Logic Connected
                   child: Container(
                     width: 80,
                     height: 40,
@@ -94,10 +181,17 @@ class _SignupPageState extends State<SignupPage> {
                       color: AppTheme.mutedTaupe,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      color: Colors.black,
-                      size: 20,
+                    child: Center(
+                      child: _isLoading 
+                      ? const SizedBox(
+                          width: 20, height: 20, 
+                          child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)
+                        )
+                      : const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: Colors.black,
+                          size: 20,
+                        ),
                     ),
                   ),
                 ),
@@ -105,7 +199,7 @@ class _SignupPageState extends State<SignupPage> {
 
               const Spacer(flex: 3),
 
-              // LOGIN FOOTER
+              // --- LOGIN FOOTER ---
               Center(
                 child: GestureDetector(
                   onTap: () {
@@ -137,18 +231,18 @@ class _SignupPageState extends State<SignupPage> {
     );
   }
 
-  // UPDATED WIDGET BUILDER
+  // --- YOUR ORIGINAL CUSTOM TEXT FIELD ---
   Widget _buildFigmaTextField({
     required String hint,
     required bool obscure,
-    required TextEditingController controller, // <--- Add this argument
+    required TextEditingController controller,
     double width = 300,
   }) {
     return Center(
       child: Container(
         width: width,
         height: 45,
-        decoration: const BoxDecoration( // Removed AppTheme reference for simplicity in snippet
+        decoration: const BoxDecoration(
           color: AppTheme.deepTaupe,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(30),
@@ -158,7 +252,7 @@ class _SignupPageState extends State<SignupPage> {
         padding: const EdgeInsets.symmetric(horizontal: 25),
         alignment: Alignment.centerLeft,
         child: TextField(
-          controller: controller, // <--- Assign controller here
+          controller: controller,
           obscureText: obscure,
           style: GoogleFonts.beiruti(
             textStyle: const TextStyle(
@@ -166,6 +260,7 @@ class _SignupPageState extends State<SignupPage> {
               fontSize: 16,
             ),
           ),
+          cursorColor: AppTheme.fogWhite,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.beiruti(
