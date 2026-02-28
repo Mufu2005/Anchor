@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 // --- APP IMPORTS ---
+import '../../../core/services/flutter_storage_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/encryption_service.dart';
 import '../../../core/services/online_db_service.dart';
@@ -28,7 +28,6 @@ class _SignupPageState extends State<SignupPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _nicknameController = TextEditingController(); // <--- Added for new logic
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _encryptionKeyController = TextEditingController();
 
   bool _isLoading = false;
 
@@ -77,7 +76,7 @@ class _SignupPageState extends State<SignupPage> {
       final encKey = EncryptionService().encryptData(encryptionKey);
 
       // C. Save Profile to DB
-      await OnlineDbService().createProfile(
+      String newUserId = await OnlineDbService().createProfile(
         email: encEmail,
         name: encName,
         nickname: encNick,
@@ -85,13 +84,17 @@ class _SignupPageState extends State<SignupPage> {
         encryption_key: encKey,
       );
 
-      // D. Start Session (Store plain text for this session)
-      SessionManager().setSession(
-        key: widget.rawEncryptionKey,
-        username: name,
-        nickname: nickname,
-        userId: "null"//authRes.user!.id,
-      );
+      // D. Save Session Info to Storage
+     final storage = FlutterStorageService(); 
+      
+      // 2. Feed the data into THAT specific instance
+      storage.getSessionInfoFromUser(encryptionKey, name, nickname, newUserId, true);
+      
+      // 3. Tell THAT specific instance to write to the hard drive
+      await storage.setUserInfoToStorage();
+
+      // E. Start Session (Make sure to await this too!)
+      await SessionManager().setSession();
 
       if (mounted) {
         Navigator.pushAndRemoveUntil(

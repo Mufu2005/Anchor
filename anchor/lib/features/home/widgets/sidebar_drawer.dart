@@ -1,3 +1,6 @@
+import 'package:anchor/core/services/flutter_storage_service.dart';
+import 'package:anchor/core/services/session_manager.dart';
+import 'package:anchor/features/welcome/pages/landing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Required for Haptics
 import 'package:google_fonts/google_fonts.dart';
@@ -66,7 +69,7 @@ class SidebarDrawer extends StatelessWidget {
 
                   // USER NAME (Lighter Weight)
                   Text(
-                    "MUFADDAL",
+                    SessionManager().nickname.toUpperCase(),
                     style: GoogleFonts.bangers(
                       color: AppTheme.fogWhite,
                       fontSize: 32,
@@ -138,8 +141,9 @@ class SidebarDrawer extends StatelessWidget {
             pageToOpen = const SupportPage();
             break;
           case "logout":
-            // Add your logout logic here
-            print("Logout clicked");
+            FlutterStorageService().clearUserInfoFromStorage();
+            SessionManager().clear();
+            pageToOpen = const LandingPage();
             break;
           case "settings":
             pageToOpen = const SettingsPage();

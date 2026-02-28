@@ -1,3 +1,5 @@
+import 'package:anchor/core/services/session_manager.dart';
+import 'package:anchor/features/auth/pages/lock_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
@@ -32,7 +34,15 @@ class _InitializationPageState extends State<InitializationPage> {
 
     // 3. Wait 2 seconds before launching
     await Future.delayed(const Duration(seconds: 2));
-
+    
+    await SessionManager().setSession();
+    if(SessionManager().isLoggedIn == true){
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LockScreen()),
+      );
+    }
+    else{
     // 4. Navigate
     if (mounted) {
       Navigator.pushReplacement(
@@ -40,6 +50,7 @@ class _InitializationPageState extends State<InitializationPage> {
         MaterialPageRoute(builder: (context) => const LoginPage()),
       );
     }
+  }
   }
 
   @override

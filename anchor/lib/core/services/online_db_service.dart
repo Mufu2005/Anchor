@@ -1,3 +1,4 @@
+import 'package:anchor/core/services/session_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/habits/models/habit_model.dart';
 import '../../features/auth/models/user_model.dart' as user_model;
@@ -25,7 +26,7 @@ class OnlineDbService {
     }
   }
 
-  Future<void> createProfile({
+  Future<String> createProfile({
     required String email,
     required String name,
     required String nickname,
@@ -33,7 +34,7 @@ class OnlineDbService {
     required String encryption_key,
   }) async {
 
-    await _client.from('profiles').insert({
+    final response = await _client.from('profiles').insert({
       // 'user_id': ... REMOVE THIS LINE ENTIRELY
       // OR set it to null if you prefer:
       'email': email,
@@ -41,10 +42,13 @@ class OnlineDbService {
       'nickname': nickname,
       'password': password,
       'encryption_key': encryption_key,
-    });
+    }).select('id').single();
+
+    String newUserId = response['id'] as String;
+    print("✅ New User Created: $newUserId");
+    return newUserId;
   }
 
-  // --- 3. DELETE HABIT ---
   Future<void> deleteUser(String userId) async {
     await _client.from('profiles').delete().eq('id', userId);
   }
@@ -59,6 +63,7 @@ class OnlineDbService {
       final response = await _client
           .from('habits')
           .select()
+          .eq('user_id', SessionManager().userId)
           .order('created_at', ascending: false);
 
       return (response as List).map((e) => Habit.fromJson(e)).toList();
@@ -77,10 +82,8 @@ class OnlineDbService {
     // We removed the user check because we are in "Dev Mode"
 
     await _client.from('habits').insert({
-      // 'user_id': ... REMOVE THIS LINE ENTIRELY
-      // OR set it to null if you prefer:
       'id': null,
-      'user_id': "AN-U-00111",
+      'user_id': SessionManager().userId,
       'title': title,
       'streak': 0,
       'is_strict': isStrict,
