@@ -74,6 +74,7 @@ class _SignupPageState extends State<SignupPage> {
       final encNick = EncryptionService().encryptData(nickname);
       final encPassword = EncryptionService().encryptData(password);
       final encKey = EncryptionService().encryptData(encryptionKey);
+      final hashEmail = EncryptionService().generateBlindIndex(email);
 
       // C. Save Profile to DB
       String newUserId = await OnlineDbService().createProfile(
@@ -82,19 +83,20 @@ class _SignupPageState extends State<SignupPage> {
         nickname: encNick,
         password: encPassword,
         encryption_key: encKey,
+        hash_email: hashEmail,
       );
 
       // D. Save Session Info to Storage
      final storage = FlutterStorageService(); 
       
       // 2. Feed the data into THAT specific instance
-      storage.getSessionInfoFromUser(encryptionKey, name, nickname, newUserId, true);
+      storage.getInfoFromUser(encryptionKey, name, nickname, newUserId, true);
       
       // 3. Tell THAT specific instance to write to the hard drive
       await storage.setUserInfoToStorage();
 
       // E. Start Session (Make sure to await this too!)
-      await SessionManager().setSession();
+      await SessionManager().setSessionForLoggedInUser();
 
       if (mounted) {
         Navigator.pushAndRemoveUntil(

@@ -1,3 +1,6 @@
+import 'package:anchor/core/services/encryption_service.dart';
+import 'package:anchor/core/services/online_db_service.dart';
+import 'package:anchor/core/services/session_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,13 +9,15 @@ import '../../../core/theme/app_theme.dart';
 class JournalEditorPage extends StatefulWidget {
   final String? initialTitle;
   final String? initialContent;
-  final String? initialCategory; 
+  final String? initialCategory;
+  final String? entryId; // Pass this if editing an existing entry
 
   const JournalEditorPage({
-    super.key, 
-    this.initialTitle, 
+    super.key,
+    this.initialTitle,
     this.initialContent,
     this.initialCategory,
+    this.entryId,
   });
 
   @override
@@ -22,18 +27,20 @@ class JournalEditorPage extends StatefulWidget {
 class _JournalEditorPageState extends State<JournalEditorPage> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
+  final OnlineDbService _db = OnlineDbService();
+  
+  bool _isSaving = false;
 
   // --- CATEGORY STATE ---
-  List<String> _categories = ["Personal", "Work", "Ideas", "Health"];
-  String _selectedCategory = "Personal"; 
+  List<String> _categories = ["Personal", "Work", "Ideas", "Health", "Study"];
+  String _selectedCategory = "Personal";
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.initialTitle);
     _contentController = TextEditingController(text: widget.initialContent);
-    
-    // Ensure the initial category exists in the list
+
     if (widget.initialCategory != null) {
       if (!_categories.contains(widget.initialCategory)) {
         _categories.add(widget.initialCategory!);
@@ -49,79 +56,101 @@ class _JournalEditorPageState extends State<JournalEditorPage> {
     super.dispose();
   }
 
-  // --- ADD NEW CATEGORY ---
+  // --- SAVE TO DATABASE (ENCRYPTED) ---
+  void _saveEntry() async {
+    if (_titleController.text.isEmpty || _contentController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Title and Content cannot be empty")),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    HapticFeedback.mediumImpact();
+
+    try {
+      // 1. Encrypt data locally
+      final String encTitle = EncryptionService().encryptData(_titleController.text);
+      final String encContent = EncryptionService().encryptData(_contentController.text);
+      final String encCategory = EncryptionService().encryptData(_selectedCategory);
+
+      // 2. Push to DB
+      await _db.createNewEntry(
+        title: encTitle,
+        content: encContent,
+        category: encCategory,
+      );
+
+      if (mounted) {
+        Navigator.pop(context); // Return to Journal List
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Encryption failed: $e")),
+      );
+    }
+  }
+
+  // --- CATEGORY DIALOGS ---
   void _showAddCategoryDialog() {
     TextEditingController newCatController = TextEditingController();
-    
     showDialog(
       context: context,
-      builder: (context) {
-        return _buildStyledDialog(
-          title: "NEW CATEGORY",
-          controller: newCatController,
-          confirmText: "ADD",
-          onConfirm: () {
-            if (newCatController.text.isNotEmpty) {
-              setState(() {
-                _categories.add(newCatController.text);
-                _selectedCategory = newCatController.text;
-              });
-              Navigator.pop(context);
-            }
-          },
-        );
-      },
+      builder: (context) => _buildStyledDialog(
+        title: "NEW CATEGORY",
+        controller: newCatController,
+        confirmText: "ADD",
+        onConfirm: () {
+          if (newCatController.text.isNotEmpty) {
+            setState(() {
+              _categories.add(newCatController.text);
+              _selectedCategory = newCatController.text;
+            });
+            Navigator.pop(context);
+          }
+        },
+      ),
     );
   }
 
-  // --- EDIT / DELETE CATEGORY ---
   void _showEditCategoryDialog(int index) {
     final String currentName = _categories[index];
     TextEditingController editController = TextEditingController(text: currentName);
 
     showDialog(
       context: context,
-      builder: (context) {
-        return _buildStyledDialog(
-          title: "EDIT CATEGORY",
-          controller: editController,
-          confirmText: "SAVE",
-          // Show Delete Button on the left
-          leadingAction: TextButton(
-            onPressed: () {
-               // Prevent deleting the last category
-               if (_categories.length <= 1) return;
-
-               HapticFeedback.mediumImpact();
-               setState(() {
-                 _categories.removeAt(index);
-                 // If we deleted the active category, switch to the first one
-                 if (_selectedCategory == currentName) {
-                   _selectedCategory = _categories.isNotEmpty ? _categories[0] : "";
-                 }
-               });
-               Navigator.pop(context);
-            },
-            child: Text("DELETE", style: GoogleFonts.antonio(color: const Color(0xFFCD1C18))),
-          ),
-          onConfirm: () {
-            if (editController.text.isNotEmpty) {
-              setState(() {
-                _categories[index] = editController.text;
-                // If we renamed the active category, update the selection
-                if (_selectedCategory == currentName) {
-                  _selectedCategory = editController.text;
-                }
-              });
-              Navigator.pop(context);
-            }
+      builder: (context) => _buildStyledDialog(
+        title: "EDIT CATEGORY",
+        controller: editController,
+        confirmText: "SAVE",
+        leadingAction: TextButton(
+          onPressed: () {
+            if (_categories.length <= 1) return;
+            HapticFeedback.mediumImpact();
+            setState(() {
+              _categories.removeAt(index);
+              if (_selectedCategory == currentName) {
+                _selectedCategory = _categories[0];
+              }
+            });
+            Navigator.pop(context);
           },
-        );
-      },
+          child: Text("DELETE", style: GoogleFonts.antonio(color: const Color(0xFFCD1C18))),
+        ),
+        onConfirm: () {
+          if (editController.text.isNotEmpty) {
+            setState(() {
+              _categories[index] = editController.text;
+              if (_selectedCategory == currentName) _selectedCategory = editController.text;
+            });
+            Navigator.pop(context);
+          }
+        },
+      ),
     );
   }
 
-  // --- REUSABLE DIALOG WIDGET ---
   Widget _buildStyledDialog({
     required String title,
     required TextEditingController controller,
@@ -145,17 +174,14 @@ class _JournalEditorPageState extends State<JournalEditorPage> {
             focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.fogWhite)),
           ),
         ),
-        actionsAlignment: MainAxisAlignment.spaceBetween, // Pushes Delete to left, Save to right
+        actionsAlignment: MainAxisAlignment.spaceBetween,
         actions: [
           leadingAction ?? TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text("CANCEL", style: GoogleFonts.antonio(color: AppTheme.mutedTaupe)),
           ),
           TextButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              onConfirm();
-            },
+            onPressed: onConfirm,
             child: Text(confirmText, style: GoogleFonts.antonio(color: AppTheme.fogWhite)),
           ),
         ],
@@ -172,46 +198,35 @@ class _JournalEditorPageState extends State<JournalEditorPage> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           child: Column(
             children: [
-              // 1. HEADER
+              // HEADER
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.pop(context);
-                    },
+                    onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe, size: 30),
                   ),
-
-                   Text(
-                widget.initialTitle == null ? "NEW ENTRY" : "EDIT ENTRY",
-                style: GoogleFonts.antonio(
-                  color: AppTheme.fogWhite,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  fontStyle: FontStyle.italic,
-                  letterSpacing: 1.0,
-                ),
-              ),
-
+                  Text(
+                    widget.initialTitle == null ? "NEW ENTRY" : "EDIT ENTRY",
+                    style: GoogleFonts.antonio(
+                      color: AppTheme.fogWhite,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                   IconButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      // TODO: Save Logic
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.bookmark, color: AppTheme.mutedTaupe, size: 28),
+                    onPressed: _isSaving ? null : _saveEntry,
+                    icon: _isSaving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red))
+                        : const Icon(Icons.bookmark, color: AppTheme.mutedTaupe, size: 28),
                   ),
                 ],
               ),
 
-              // 2. TITLE
-             
-
               const SizedBox(height: 20),
 
-              // 3. CATEGORY SELECTOR (Updated with Long Press)
+              // CATEGORY SELECTOR
               SizedBox(
                 height: 40,
                 child: ListView.separated(
@@ -219,61 +234,31 @@ class _JournalEditorPageState extends State<JournalEditorPage> {
                   itemCount: _categories.length + 1,
                   separatorBuilder: (_, __) => const SizedBox(width: 10),
                   itemBuilder: (context, index) {
-                    // "Add New" Button
                     if (index == _categories.length) {
                       return GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          _showAddCategoryDialog();
-                        },
+                        onTap: _showAddCategoryDialog,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 15),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: AppTheme.mutedTaupe),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.add, color: AppTheme.mutedTaupe, size: 20),
-                          ),
+                          decoration: BoxDecoration(border: Border.all(color: AppTheme.mutedTaupe), borderRadius: BorderRadius.circular(20)),
+                          child: const Icon(Icons.add, color: AppTheme.mutedTaupe, size: 20),
                         ),
                       );
                     }
-
-                    // Category Chips
                     final category = _categories[index];
                     final isSelected = category == _selectedCategory;
-
                     return GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                      },
-                      // --- LONG PRESS TO EDIT/DELETE ---
-                      onLongPress: () {
-                        HapticFeedback.heavyImpact(); // Stronger vibration for long press
-                        _showEditCategoryDialog(index);
-                      },
+                      onTap: () => setState(() => _selectedCategory = category),
+                      onLongPress: () => _showEditCategoryDialog(index),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         decoration: BoxDecoration(
                           color: isSelected ? AppTheme.deepTaupe : Colors.transparent,
-                          border: Border.all(
-                            color: isSelected ? AppTheme.fogWhite : AppTheme.mutedTaupe,
-                          ),
+                          border: Border.all(color: isSelected ? AppTheme.fogWhite : AppTheme.mutedTaupe),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Center(
-                          child: Text(
-                            category,
-                            style: GoogleFonts.antonio(
-                              color: isSelected ? AppTheme.fogWhite : AppTheme.mutedTaupe,
-                              fontSize: 14,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            ),
-                          ),
+                          child: Text(category, style: GoogleFonts.antonio(color: isSelected ? AppTheme.fogWhite : AppTheme.mutedTaupe, fontSize: 14)),
                         ),
                       ),
                     );
@@ -283,27 +268,17 @@ class _JournalEditorPageState extends State<JournalEditorPage> {
 
               const SizedBox(height: 20),
 
-              // 4. TITLE INPUT
+              // TITLE INPUT
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppTheme.deepTaupe,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                decoration: BoxDecoration(color: AppTheme.deepTaupe, borderRadius: BorderRadius.circular(20)),
                 child: TextField(
                   controller: _titleController,
-                  style: GoogleFonts.antonio(
-                    color: AppTheme.fogWhite,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w400,
-                  ),
+                  style: GoogleFonts.antonio(color: AppTheme.fogWhite, fontSize: 24),
                   cursorColor: AppTheme.fogWhite,
                   decoration: InputDecoration(
                     hintText: "Title",
-                    hintStyle: GoogleFonts.antonio(
-                      color: AppTheme.fogWhite.withOpacity(0.5),
-                      fontSize: 24,
-                    ),
+                    hintStyle: GoogleFonts.antonio(color: AppTheme.fogWhite.withOpacity(0.5), fontSize: 24),
                     border: InputBorder.none,
                   ),
                 ),
@@ -311,32 +286,22 @@ class _JournalEditorPageState extends State<JournalEditorPage> {
 
               const SizedBox(height: 15),
 
-              // 5. CONTENT INPUT
+              // CONTENT INPUT
               Expanded(
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppTheme.deepTaupe,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  decoration: BoxDecoration(color: AppTheme.deepTaupe, borderRadius: BorderRadius.circular(20)),
                   child: TextField(
                     controller: _contentController,
-                    expands: true, 
-                    maxLines: null, 
+                    expands: true,
+                    maxLines: null,
                     textAlignVertical: TextAlignVertical.top,
                     cursorColor: AppTheme.fogWhite,
-                    style: GoogleFonts.beiruti(
-                      color: AppTheme.fogWhite,
-                      fontSize: 16,
-                      height: 1.5,
-                    ),
+                    style: GoogleFonts.beiruti(color: AppTheme.fogWhite, fontSize: 16, height: 1.5),
                     decoration: InputDecoration(
                       hintText: "Write something here...",
-                      hintStyle: GoogleFonts.beiruti(
-                        color: AppTheme.mutedTaupe,
-                        fontSize: 14,
-                      ),
+                      hintStyle: GoogleFonts.beiruti(color: AppTheme.mutedTaupe, fontSize: 14),
                       border: InputBorder.none,
                     ),
                   ),
@@ -345,19 +310,14 @@ class _JournalEditorPageState extends State<JournalEditorPage> {
 
               const SizedBox(height: 20),
 
-              // 6. FOOTER
+              // FOOTER LINE
               Container(
                 width: 50,
                 height: 4,
                 decoration: BoxDecoration(
                   color: const Color(0xFFCD1C18),
                   borderRadius: BorderRadius.circular(2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFCD1C18).withOpacity(0.5),
-                      blurRadius: 6,
-                    ),
-                  ],
+                  boxShadow: [BoxShadow(color: const Color(0xFFCD1C18).withOpacity(0.5), blurRadius: 6)],
                 ),
               ),
             ],

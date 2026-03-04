@@ -1,3 +1,6 @@
+import 'dart:math';
+
+import 'package:anchor/core/services/online_db_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For Haptics
 import 'package:google_fonts/google_fonts.dart';
@@ -6,19 +9,23 @@ import '../../../core/theme/app_theme.dart';
 import '../pages/journal_ticket_view.dart';
 
 class JournalEntryCard extends StatefulWidget {
+  final String id;
   final String title;
   final String content;
   final String date;
   final bool isExpanded;
   final VoidCallback? onEdit;
+  final VoidCallback onDelete;
 
   const JournalEntryCard({
+    required this.id,
     super.key,
     required this.title,
     required this.content,
     required this.date,
     this.isExpanded = false,
     this.onEdit,
+    required this.onDelete,
   });
 
   @override
@@ -33,6 +40,12 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
     super.initState();
     _isExpanded = widget.isExpanded;
   }
+
+  String generateRandomKey() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  return String.fromCharCodes(Iterable.generate(
+      6, (_) => chars.codeUnitAt(Random().nextInt(chars.length))));
+}
 
   @override
   Widget build(BuildContext context) {
@@ -70,28 +83,33 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
+
+                  
                 ),
                 // --- BARCODE SECTION (UPDATED) ---
                 if (_isExpanded)
                   GestureDetector(
-                    onTap: () {
+                    onTap: () async {
                       HapticFeedback.lightImpact();
+                      String shareKey = generateRandomKey();
+                      String sharedEntryId = await OnlineDbService().createSharedEntry(key: shareKey, id: widget.id, title: widget.title, content: widget.content);
                       // Navigate to the Ticket View
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => JournalTicketView(
+                            id: sharedEntryId,
                             title: widget.title,
                             date: widget.date,
-                            // In a real app, pass the actual ID from your database
-                            entryId: "ANCH-8821", 
+                            entryId: widget.id, 
+                            shareKey: shareKey,
                           ),
                         ),
                       );
                     },
                     child: BarcodeWidget(
-                      barcode: Barcode.code128(),
-                      data: 'ANCH-8821', 
+                      barcode: Barcode.qrCode(),
+                      data: widget.id, 
                       color: AppTheme.mutedTaupe, 
                       width: 80,
                       height: 30,
@@ -139,12 +157,19 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
                         child: const Icon(Icons.edit_outlined, color: AppTheme.mutedTaupe, size: 25),
                       ),
                       const SizedBox(width: 10),
-                      const Icon(Icons.delete_outline, color: AppTheme.mutedTaupe, size: 25),
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact(); // Heavier vibration for deleting
+                          widget.onDelete(); // <--- THIS TRIGGERS THE FUNCTION!
+                        },
+                        child: const Icon(Icons.delete_outline, color: AppTheme.mutedTaupe, size: 25),
+                      ),
                     ],
                   ),
                 ],
               ),
             ] else ...[
+              
               // Collapsed state (empty)
             ],
           ],

@@ -15,7 +15,7 @@ class SessionManager {
   bool? _isLoggedIn;
 
   // --- SETTERS ---
-  Future<void> setSession() async {
+  Future<void> setSessionForLoggedInUser() async {
     final storage = FlutterStorageService();
 
     // 2. Tell THAT instance to pull data from the hard drive into its RAM
@@ -27,21 +27,46 @@ class SessionManager {
     _nickname = storage.nickname;
     _userId = storage.userId;
     _isLoggedIn = storage.isLoggedIn;
-    
-    if(_isLoggedIn == true){
-      print("✅ Session Started for: $_username");  
+
+    if (_isLoggedIn == true) {
+      print("✅ Session Started for: $_username");
+    } else {
+      print("No data found: $_username");
     }
-    else{
+  }
+
+  Future<void> setSessionForNewLoggedInUser(
+    String encryptionKey,
+    String username,
+    String nickname,
+    String userId,
+    bool isLoggedIn,
+  ) async {
+    final storage = FlutterStorageService();
+    storage.getInfoFromUser(encryptionKey, username, nickname, userId, isLoggedIn);
+    await storage.setUserInfoToStorage(); 
+
+    // 3. Extract the variables from THAT same instance
+    _encryptionKey = storage.key;
+    _username = storage.username;
+    _nickname = storage.nickname;
+    _userId = storage.userId;
+    _isLoggedIn = storage.isLoggedIn;
+
+    if (_isLoggedIn == true) {
+      print("✅ Session Started for: $_username");
+    } else {
       print("No data found: $_username");
     }
   }
 
   // --- GETTERS (For Habits/Journal) ---
   String get key {
-    if (_encryptionKey == null) throw Exception("Session Expired: Missing Encryption Key");
+    if (_encryptionKey == null)
+      throw Exception("Session Expired: Missing Encryption Key");
     return _encryptionKey!;
   }
-  
+
   String get username => _username ?? "Unknown";
   String get nickname => _nickname ?? "User";
   String get userId => _userId ?? "";

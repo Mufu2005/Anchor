@@ -2,24 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 
 class JournalTicketView extends StatelessWidget {
+  final String id;
   final String title;
   final String date;
-  final String entryId; // e.g., "ABDS116445-A"
+  final String entryId;
+  final String shareKey;
 
   const JournalTicketView({
     super.key,
+    required this.id,
     required this.title,
     required this.date,
     required this.entryId,
+    required this.shareKey,
   });
 
   @override
   Widget build(BuildContext context) {
+    // 1. DATA PACKING
+    // We combine the ID and the Key into the QR code.
+    // Format: entryId|shareKey
+    final String combinedData = "$id|$entryId|$shareKey";
+
     return Scaffold(
       backgroundColor: AppTheme.voidBlack,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: AppTheme.mutedTaupe),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -28,139 +46,173 @@ class JournalTicketView extends StatelessWidget {
             // --- THE TICKET CARD ---
             Center(
               child: Container(
-                width: 350, // Fixed width like a phone screen/ticket
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+                width: 340,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 30,
+                ),
                 decoration: BoxDecoration(
-                  color: AppTheme.deepTaupe, // #5C4E4E
+                  color: AppTheme.deepTaupe,
                   borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppTheme.fogWhite.withOpacity(0.1)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. TOP SECTION (Title + Date)
-                    const Divider(color: Colors.white30, height: 1),
+                    // TOP DECORATIVE ELEMENT (Keeps the ticket vibe)
                     const SizedBox(height: 15),
+
+                    // TITLE
                     Text(
-                      title,
+                      title.toUpperCase(),
+                      textAlign: TextAlign.center,
                       style: GoogleFonts.antonio(
                         color: AppTheme.fogWhite,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w400,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 15),
-                    const Divider(color: Colors.white30, height: 1),
+
                     const SizedBox(height: 10),
+
+                    // DATE
                     Text(
-                      date, // e.g. "08:00 21 Jan 2025"
+                      date,
                       style: GoogleFonts.robotoMono(
-                        color: AppTheme.fogWhite.withOpacity(0.7),
-                        fontSize: 12,
+                        color: AppTheme.fogWhite.withOpacity(0.6),
+                        fontSize: 11,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Divider(color: Colors.white30, height: 1),
-
-                    const SizedBox(height: 20),
-
-                    // 2. BARCODE SECTION
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        // The Barcode
-                        BarcodeWidget(
-                          barcode: Barcode.code128(),
-                          data: entryId,
-                          color: AppTheme.fogWhite.withOpacity(0.6),
-                          width: 200,
-                          height: 50,
-                          drawText: false,
-                        ),
-                        // The Vertical "ANCHOR" Label
-                        RotatedBox(
-                          quarterTurns: 3,
-                          child: Text(
-                            "ANCHOR",
-                            style: GoogleFonts.bangers(
-                              color: AppTheme.fogWhite,
-                              fontSize: 12,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Divider(color: Colors.white30, height: 1),
-
-                    const SizedBox(height: 40),
-
-                    // 3. SCANNER GRAPHIC (Brackets + Anchor)
-                    Center(
-                      child: SizedBox(
-                        width: 120,
-                        height: 120,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // The Brackets (using a large icon)
-                           Image.asset(
-                              "assets/icons/scanning.png", // Ensure you have this small icon
-                              width: 200,
-                              height: 200,
-                              color: AppTheme.fogWhite,
-                            ),
-                            // The Anchor in the center
-                            Image.asset(
-                              "assets/images/logo.png", // Ensure you have this small icon
-                              width: 50,
-                              height: 50,
-                              color: AppTheme.fogWhite,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    // 4. ID CODE + ARROW
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Down Arrow (Expand?)
-                        //const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe, size: 50),
-
-                        //const SizedBox(width: 40),
-                        
-                        // The Big ID Code
-                        Text(
-                          entryId,
-                          style: GoogleFonts.oswald(
-                            color: AppTheme.fogWhite,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        
-                        //const SizedBox(width: 30), // Spacer to balance the row
-                      ],
                     ),
 
                     const SizedBox(height: 30),
 
-                    // 5. RED WARNING
-                    Center(
-                      child: Text(
-                        "Scan with caution",
-                        style: GoogleFonts.robotoMono(
-                          color: const Color(0xFFCD1C18), // Red
-                          fontSize: 10,
+                    // --- THE QR CODE (The Core Data) ---
+                    Container(
+                      padding: const EdgeInsets.all(
+                        20,
+                      ), // Slightly more padding for the glow
+                      decoration: BoxDecoration(
+                        color: AppTheme.fogWhite.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(
+                          24,
+                        ), // Softer corners
+                        border: Border.all(
+                          color: AppTheme.fogWhite.withOpacity(0.1),
                         ),
+                        // Optional: Add a subtle glow behind the QR code
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.fogWhite.withOpacity(0.05),
+                            blurRadius: 20,
+                            spreadRadius: 0,
+                          ),
+                        ],
                       ),
+                      child: Column(
+                        children: [
+                          // USE A STACK TO LAYER THE LOGO ON TOP
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // 1. THE QR CODE (Background Layer)
+                              QrImageView(
+                                data: combinedData,
+                                version: QrVersions.auto,
+                                size: 160.0,
+
+                                // CRITICAL: High error correction allows the code to work
+                                // even though we are covering the middle.
+                                errorCorrectionLevel: QrErrorCorrectLevel.H,
+
+                                // ❌ REMOVED 'embeddedImage' property from here
+                                dataModuleStyle: QrDataModuleStyle(
+                                  dataModuleShape: QrDataModuleShape.circle,
+                                  color: AppTheme.fogWhite.withOpacity(0.9),
+                                ),
+
+                                eyeStyle: const QrEyeStyle(
+                                  eyeShape: QrEyeShape.circle,
+                                  color: AppTheme.fogWhite,
+                                ),
+                                padding: const EdgeInsets.all(0),
+                              ),
+
+                              // 2. THE LOGO WITH "CUTOUT" BACKGROUND (Top Layer)
+                              Container(
+                                width:
+                                    45, // Approx 20-25% of QR size (160 * 0.22 = ~35)
+                                height: 45,
+                                padding: const EdgeInsets.all(
+                                  3,
+                                ), // Space between logo and the "cutout" edge
+                                decoration: BoxDecoration(
+                                  // ⚠️ IMPORTANT: Change this color to match the CARD background
+                                  // behind this QR code. (e.g., Colors.black, or Color(0xFF1E1E1E))
+                                  color: AppTheme.deepTaupe,
+                                  shape: BoxShape.rectangle,
+                                  borderRadius: BorderRadius.circular(8.0),
+                                ),
+                                child: Image.asset(
+                                  'assets/images/logo.png',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // INSTRUCTION TEXT
+                          Text(
+                            "SCAN TO SYNCHRONIZE",
+                            style: GoogleFonts.robotoMono(
+                              color: AppTheme.fogWhite.withOpacity(0.4),
+                              fontSize: 10,
+                              letterSpacing: 2,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    // VISUAL ID DISPLAY (Safe Substring Fix)
+                    Text(
+                      entryId.length >= 13
+                          ? entryId.substring(0, 13).toUpperCase()
+                          : entryId.toUpperCase(),
+                      style: GoogleFonts.oswald(
+                        color: AppTheme.fogWhite,
+                        fontSize: 22,
+                        letterSpacing: 3.0,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+                    const Divider(color: Colors.white10),
+                    const SizedBox(height: 15),
+
+                    // SECURITY FOOTER
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.lock_outline,
+                          color: Color.fromARGB(255, 0, 0, 0),
+                          size: 14,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "TEMPORARY SHARED VAULT ACCESS",
+                          style: GoogleFonts.robotoMono(
+                            color: const Color.fromARGB(255, 0, 0, 0),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -169,18 +221,43 @@ class JournalTicketView extends StatelessWidget {
 
             const Spacer(),
 
-            // --- FOOTER: DOWNLOAD ICON ---
-            IconButton(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                // TODO: Download Image Logic
+            // ACTION BUTTON
+            _buildFooterAction(
+              icon: Icons.ios_share_rounded,
+              label: "SEND ACCESS TICKET",
+              onTap: () {
+                HapticFeedback.heavyImpact();
+                // Logic for saving as image
               },
-              icon: const Icon(Icons.download_outlined, color: AppTheme.fogWhite, size: 30),
             ),
-            
+
             const SizedBox(height: 40),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFooterAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Icon(icon, color: AppTheme.fogWhite, size: 32),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: GoogleFonts.antonio(
+              color: AppTheme.fogWhite,
+              fontSize: 12,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ],
       ),
     );
   }

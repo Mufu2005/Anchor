@@ -35,7 +35,7 @@ class _InitializationPageState extends State<InitializationPage> {
     // 3. Wait 2 seconds before launching
     await Future.delayed(const Duration(seconds: 2));
     
-    await SessionManager().setSession();
+    await SessionManager().setSessionForLoggedInUser();
     if(SessionManager().isLoggedIn == true){
       Navigator.pushReplacement(
         context,

@@ -1,3 +1,4 @@
+import 'package:anchor/core/services/encryption_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -33,9 +34,10 @@ class _NewHabitPageState extends State<NewHabitPage> {
 
     setState(() => _isSaving = true);
 
+    final String encTittle = EncryptionService().encryptData(_nameController.text);
     // Call the updated create function
     await _db.createHabit(
-      title: _nameController.text,
+      title: encTittle,
       isStrict: _isStrict,
       deadline: _deadline.toInt(),
     );

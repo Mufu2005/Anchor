@@ -1,3 +1,4 @@
+import 'package:anchor/core/services/encryption_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -27,6 +28,7 @@ class _HabitsPageState extends State<HabitsPage> {
 
   // --- 1. LOAD DATA ---
   Future<void> _fetchHabits() async {
+    await EncryptionService().loadKeyFromStorage();
     final data = await _db.getHabits();
     if (mounted) {
       setState(() {
@@ -116,7 +118,7 @@ class _HabitsPageState extends State<HabitsPage> {
                       itemBuilder: (context, index) {
                         final habit = _habits[index];
                         return HabitCard(
-                          title: habit.title,
+                          title: EncryptionService().decryptData(habit.title),
                           streak: habit.streak,
                           statusColor: habit.statusColor, // Calculated dynamically
                           onTap: () => _incrementHabit(habit),

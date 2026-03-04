@@ -15,7 +15,7 @@
       String get userId => _userId ?? "";
       bool get isLoggedIn => _isLoggedIn ?? false;
 
-      void getSessionInfoFromUser(String key, String username, String nickname, String userId, bool isLoggedIn){
+      void getInfoFromUser(String key, String username, String nickname, String userId, bool isLoggedIn){
           _key = key;
           _username = username;
           _nickname = nickname;

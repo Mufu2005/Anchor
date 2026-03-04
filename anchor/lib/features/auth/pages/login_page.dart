@@ -2,8 +2,8 @@ import 'package:anchor/features/auth/pages/setup_key_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+// === App imports ===
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/encryption_service.dart';
 import '../../../core/services/online_db_service.dart';
@@ -20,8 +20,10 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   // 1. CONTROLLERS
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController(); // <--- FOR THE ENCRYPTION KEY
-  final TextEditingController _keyController = TextEditingController(); // <--- FOR THE ENCRYPTION KEY
+  final TextEditingController _passwordController =
+      TextEditingController(); // <--- FOR THE ENCRYPTION KEY
+  final TextEditingController _keyController =
+      TextEditingController(); // <--- FOR THE ENCRYPTION KEY
 
   bool _isLoading = false;
 
@@ -41,7 +43,9 @@ class _LoginPageState extends State<LoginPage> {
 
     if (email.isEmpty || password.isEmpty || encryptionKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email, Password, and Secret Key are required.")),
+        const SnackBar(
+          content: Text("Email, Password, and Secret Key are required."),
+        ),
       );
       return;
     }
@@ -51,31 +55,43 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       // A. AUTHENTICATE WITH SUPABASE
-      final authRes = await Supabase.instance.client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
+      final profileData = await OnlineDbService().getUserByHashEmail(email);
+      final profile = profileData.first;
 
-      if (authRes.user == null) throw "Login failed.";
+      if (profileData.isEmpty) throw "No user found.";
 
       // B. INITIALIZE ENCRYPTION SERVICE
       // We use the key provided in the UI to unlock the "vault"
       await EncryptionService().setKey(encryptionKey);
 
-      // C. FETCH ENCRYPTED PROFILE
-      final profileData = await OnlineDbService().getUserProfile();
+      final String decryptedEmail = EncryptionService().decryptData(
+        profile.email,
+      );
+      final String decryptedPassword = EncryptionService().decryptData(
+        profile.password,
+      );
 
-      if (profileData != null) {
+      if (decryptedEmail != email || decryptedPassword != password)
+        throw "Invalid credentials.";
+
+      // C. FETCH ENCRYPTED PROFILE
+
+      if (profile.id.isNotEmpty) {
         // D. DECRYPT DATA ON-THE-FLY
-        final String decryptedName = EncryptionService().decryptData(profileData['name']);
-        final String decryptedNick = EncryptionService().decryptData(profileData['nickname']);
+        final String decryptedName = EncryptionService().decryptData(
+          profile.name,
+        );
+        final String decryptedNick = EncryptionService().decryptData(
+          profile.nickname,
+        );
 
         // E. START THE SESSION
-        SessionManager().setSession(
-          key: encryptionKey,
-          username: decryptedName,
-          nickname: decryptedNick,
-          userId: authRes.user!.id,
+        SessionManager().setSessionForNewLoggedInUser(
+          encryptionKey,
+          decryptedName,
+          decryptedNick,
+          profile.id,
+          true,
         );
 
         if (mounted) {
@@ -123,26 +139,25 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 35),
 
               // --- INPUT FIELDS ---
-              
               _buildFigmaTextField(
-                hint: "Email", 
-                obscure: false, 
-                controller: _emailController
+                hint: "Email",
+                obscure: false,
+                controller: _emailController,
               ),
               const SizedBox(height: 20),
-              
+
               _buildFigmaTextField(
-                hint: "Password", 
-                obscure: true, 
-                controller: _passwordController
+                hint: "Password",
+                obscure: true,
+                controller: _passwordController,
               ),
               const SizedBox(height: 20),
 
               // NEW ENCRYPTION KEY FIELD
               _buildFigmaTextField(
-                hint: "Secret Key", 
-                obscure: true, 
-                controller: _keyController
+                hint: "Secret Key",
+                obscure: true,
+                controller: _keyController,
               ),
 
               const SizedBox(height: 30),
@@ -159,16 +174,20 @@ class _LoginPageState extends State<LoginPage> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Center(
-                      child: _isLoading 
-                      ? const SizedBox(
-                          width: 20, height: 20, 
-                          child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)
-                        )
-                      : const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          color: Colors.black,
-                          size: 20,
-                        ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.black,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              color: Colors.black,
+                              size: 20,
+                            ),
                     ),
                   ),
                 ),
@@ -182,11 +201,16 @@ class _LoginPageState extends State<LoginPage> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const SetupKeyPage()),
+                      MaterialPageRoute(
+                        builder: (context) => const SetupKeyPage(),
+                      ),
                     );
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 30,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF5C4E4E),
                       borderRadius: BorderRadius.circular(25),
@@ -235,10 +259,7 @@ class _LoginPageState extends State<LoginPage> {
           obscureText: obscure,
           cursorColor: AppTheme.fogWhite,
           style: GoogleFonts.beiruti(
-            textStyle: const TextStyle(
-              color: AppTheme.fogWhite,
-              fontSize: 16,
-            ),
+            textStyle: const TextStyle(color: AppTheme.fogWhite, fontSize: 16),
           ),
           decoration: InputDecoration(
             hintText: hint,
