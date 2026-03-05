@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/online_db_service.dart'; // <--- Import your DB service
 
 class NewTaskPage extends StatefulWidget {
   const NewTaskPage({super.key});
@@ -18,6 +19,8 @@ class _NewTaskPageState extends State<NewTaskPage> {
   // State for selections
   String _selectedPriority = "High"; // High (Red), Medium (Yellow), Low (Green)
   DateTime _selectedDate = DateTime.now();
+  
+  bool _isSaving = false; // <--- Tracks network state
 
   @override
   void dispose() {
@@ -26,11 +29,50 @@ class _NewTaskPageState extends State<NewTaskPage> {
     super.dispose();
   }
 
-  void _saveTask() {
+  // --- NEW: ASYNC SAVE LOGIC ---
+  Future<void> _saveTask() async {
     HapticFeedback.mediumImpact();
-    // TODO: Save logic goes here
-    if (_titleController.text.isNotEmpty) {
-      Navigator.pop(context);
+    
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Task name cannot be empty."),
+          backgroundColor: Color(0xFFCD1C18),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      // Pushing to Supabase!
+      // Note: descController and _selectedPriority are ignored by DB for now
+      await OnlineDbService().createTask(
+        title: title,
+        description: _descController.text.trim(),
+        priority: _selectedPriority,
+        deadline: _selectedDate,
+      );
+
+      if (mounted) {
+        Navigator.pop(context); // Success! Return to the list.
+      }
+    } catch (e) {
+      debugPrint("Error saving task: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to save task: $e"),
+            backgroundColor: const Color(0xFFCD1C18),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -78,9 +120,9 @@ class _NewTaskPageState extends State<NewTaskPage> {
     return Scaffold(
       backgroundColor: AppTheme.voidBlack,
       body: SafeArea(
-        child: SingleChildScrollView( // Prevents overflow when keyboard opens
+        child: SingleChildScrollView( 
           child: SizedBox(
-            height: MediaQuery.of(context).size.height - 50, // Full height minus safe area
+            height: MediaQuery.of(context).size.height - 50, 
             child: Column(
               children: [
                 const Spacer(flex: 2),
@@ -158,14 +200,23 @@ class _NewTaskPageState extends State<NewTaskPage> {
 
                 const Spacer(flex: 2),
 
-                // 4. SAVE BUTTON (Centered Bookmark)
+                // 4. SAVE BUTTON (Centered Bookmark or Spinner)
                 GestureDetector(
-                  onTap: _saveTask,
-                  child: const Icon(
-                    Icons.bookmark,
-                    color: AppTheme.mutedTaupe,
-                    size: 40,
-                  ),
+                  onTap: _isSaving ? null : _saveTask,
+                  child: _isSaving
+                      ? const SizedBox(
+                          height: 40,
+                          width: 40,
+                          child: CircularProgressIndicator(
+                            color: AppTheme.mutedTaupe,
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.bookmark,
+                          color: AppTheme.mutedTaupe,
+                          size: 40,
+                        ),
                 ),
 
                 const Spacer(flex: 2),

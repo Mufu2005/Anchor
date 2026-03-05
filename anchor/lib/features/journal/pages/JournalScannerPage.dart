@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
-import 'package:screen_brightness/screen_brightness.dart';
+// import 'package:screen_brightness/screen_brightness.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/encryption_service.dart';
 import '../../../core/services/online_db_service.dart';
@@ -42,19 +42,19 @@ class _JournalScannerPageState extends State<JournalScannerPage> with SingleTick
 
   @override
   void dispose() {
-    _resetBrightness();
+    // _resetBrightness();
     _animationController.dispose();
     _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _boostBrightness() async {
-    try { await ScreenBrightness().setScreenBrightness(0.8); } catch (_) {}
-  }
+  // Future<void> _boostBrightness() async {
+  //   try { await ScreenBrightness().setScreenBrightness(0.8); } catch (_) {}
+  // }
 
-  Future<void> _resetBrightness() async {
-    try { await ScreenBrightness().resetScreenBrightness(); } catch (_) {}
-  }
+  // Future<void> _resetBrightness() async {
+  //   try { await ScreenBrightness().resetScreenBrightness(); } catch (_) {}
+  // }
 
   void _toggleTorch() {
     HapticFeedback.lightImpact();

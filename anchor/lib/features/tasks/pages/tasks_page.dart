@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../models/task_model.dart';
 import '../widgets/task_card.dart';
 import 'new_task_page.dart';
+import '../../../core/services/online_db_service.dart'; // Ensure this path is correct
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -15,48 +16,82 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
-  String _selectedPriority = "All"; // Default view
-
+  String _selectedPriority = "All";
   final List<String> _priorities = ["All", "High", "Medium", "Low"];
+  
+  List<Task> _tasks = [];
+  bool _isLoading = true;
 
-  // --- MOCK DATA ---
-  final List<Task> _tasks = [
-    Task(
-      id: '1',
-      title: "Dinner with her",
-      description: "Reservations at 8 PM. Don't be late.",
-      date: DateTime.now(),
-      priority: "High", // <--- Red Bar
-      isCompleted: true,
-    ),
-    Task(
-      id: '2',
-      title: "Gym Session",
-      description: "Leg day focus. Don't skip squats.",
-      date: DateTime.now(),
-      priority: "Medium", // <--- Yellow Bar
-      isCompleted: false,
-    ),
-    Task(
-      id: '3',
-      title: "Buy Groceries",
-      description: "Milk, Eggs, Coffee.",
-      date: DateTime.now(),
-      priority: "Low", // <--- Green Bar
-      isCompleted: false,
-    ),
-    Task(
-      id: '4',
-      title: "Submit Report",
-      description: "Finalize the Q1 analysis.",
-      date: DateTime.now(),
-      priority: "High", // <--- Red Bar
-      isCompleted: false,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchTasks();
+  }
 
-  // --- 3. HELPER: COLOR LOGIC ---
-  Color _getPriorityColor(String priority) {
+  // --- 1. FETCH TASKS FROM DB ---
+  Future<void> _fetchTasks() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final fetchedTasks = await OnlineDbService().getTasks();
+      setState(() {
+        _tasks = fetchedTasks;
+      });
+    } catch (e) {
+      debugPrint("Failed to load tasks: $e");
+      // Subtle minimalistic error handling (per your prior preference)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Could not sync tasks."),
+            backgroundColor: AppTheme.deepTaupe,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // --- 2. DELETE TASK ---
+  Future<void> _handleDelete(String taskId) async {
+    HapticFeedback.mediumImpact();
+    // Optimistically remove from UI
+    setState(() {
+      _tasks.removeWhere((t) => t.id == taskId);
+    });
+    
+    try {
+      await OnlineDbService().deleteTask(taskId);
+    } catch (e) {
+      // Revert if DB fails
+      _fetchTasks();
+    }
+  }
+
+  // --- 3. TOGGLE COMPLETION ---
+  Future<void> _handleToggleCompletion(Task task) async {
+    HapticFeedback.lightImpact();
+    final newStatus = !task.isCompleted;
+    
+    // Optimistic UI update
+    setState(() {
+      task.isCompleted = newStatus;
+    });
+
+    try {
+      await OnlineDbService().markTaskAsCompleted(task.id, newStatus);
+    } catch (e) {
+      // Revert if DB fails
+      setState(() {
+        task.isCompleted = !newStatus;
+      });
+    }
+  }
+
+  // --- 4. COLOR LOGIC ---
+  Color _getPriorityColor(String? priority) {
     switch (priority) {
       case "High":
         return const Color.fromARGB(195, 205, 27, 24); // Red
@@ -65,7 +100,7 @@ class _TasksPageState extends State<TasksPage> {
       case "Low":
         return const Color(0xFF00FF41); // Green
       default:
-        return AppTheme.mutedTaupe; // Fallback
+        return AppTheme.mutedTaupe; // Fallback for missing DB priority
     }
   }
 
@@ -80,7 +115,7 @@ class _TasksPageState extends State<TasksPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // --- 1. HEADER ---
+            // --- HEADER ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Stack(
@@ -97,34 +132,24 @@ class _TasksPageState extends State<TasksPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Back Button
                       IconButton(
                         onPressed: () {
                           HapticFeedback.lightImpact();
                           Navigator.pop(context);
                         },
-                        icon: const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: AppTheme.mutedTaupe,
-                          size: 30,
-                        ),
+                        icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe, size: 30),
                       ),
-                      // Add Button
                       IconButton(
-                        onPressed: () {
+                        onPressed: () async {
                           HapticFeedback.lightImpact();
-                          Navigator.push(
+                          // Wait for NewTaskPage to return, then refresh list
+                          await Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => const NewTaskPage(),
-                            ),
+                            MaterialPageRoute(builder: (context) => const NewTaskPage()),
                           );
+                          _fetchTasks(); 
                         },
-                        icon: const Icon(
-                          Icons.add,
-                          color: AppTheme.mutedTaupe,
-                          size: 30,
-                        ),
+                        icon: const Icon(Icons.add, color: AppTheme.mutedTaupe, size: 30),
                       ),
                     ],
                   ),
@@ -132,38 +157,49 @@ class _TasksPageState extends State<TasksPage> {
               ),
             ),
 
-            // --- 2. TASK LIST ---
+            // --- TASK LIST ---
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: filteredTasks.length,
-                itemBuilder: (context, index) {
-                  final task = filteredTasks[index];
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppTheme.mutedTaupe),
+                    )
+                  : _tasks.isEmpty
+                      ? Center(
+                          child: Text(
+                            "NO TASKS FOUND",
+                            style: GoogleFonts.antonio(color: AppTheme.mutedTaupe, fontSize: 18),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          color: AppTheme.fogWhite,
+                          backgroundColor: AppTheme.deepTaupe,
+                          onRefresh: _fetchTasks,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: filteredTasks.length,
+                            itemBuilder: (context, index) {
+                              final task = filteredTasks[index];
 
-                  return TaskCard(
-                    title: task.title,
-                    description: task.description,
-                    date: DateFormat(
-                      'HH:mm dd MMM yyyy',
-                    ).format(task.date).toUpperCase(),
-
-                    // AUTOMATIC COLOR ASSIGNMENT
-                    priorityColor: _getPriorityColor(task.priority),
-
-                    isCompleted: task.isCompleted,
-                    onCheck: () {
-                      setState(() {
-                        task.isCompleted = !task.isCompleted;
-                      });
-                    },
-                    onEdit: () {},
-                    onDelete: () {},
-                  );
-                },
-              ),
+                              return TaskCard(
+                                title: task.title,
+                                description: task.description ?? "No description", // Fallback
+                                date: task.time_stamp != null 
+                                    ? DateFormat('HH:mm dd MMM yyyy').format(task.time_stamp!).toUpperCase()
+                                    : "NO DEADLINE",
+                                priorityColor: _getPriorityColor(task.priority),
+                                isCompleted: task.isCompleted,
+                                onCheck: () => _handleToggleCompletion(task),
+                                onEdit: () {
+                                  // TODO: Navigate to edit page
+                                },
+                                onDelete: () => _handleDelete(task.id),
+                              );
+                            },
+                          ),
+                        ),
             ),
 
-            // --- 3. FOOTER DROPDOWN ---
+            // --- FOOTER DROPDOWN ---
             Padding(
               padding: const EdgeInsets.only(bottom: 20, top: 10),
               child: Container(
@@ -178,35 +214,20 @@ class _TasksPageState extends State<TasksPage> {
                     value: _selectedPriority,
                     dropdownColor: AppTheme.deepTaupe,
                     borderRadius: BorderRadius.circular(20),
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down,
-                      color: AppTheme.mutedTaupe,
-                    ),
-                    style: GoogleFonts.antonio(
-                      color: AppTheme.fogWhite,
-                      fontSize: 18,
-                    ),
+                    icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.mutedTaupe),
+                    style: GoogleFonts.antonio(color: AppTheme.fogWhite, fontSize: 18),
                     isExpanded: true,
-
                     onChanged: (String? newValue) {
                       if (newValue != null) {
-                        setState(() {
-                          _selectedPriority = newValue;
-                        });
+                        setState(() => _selectedPriority = newValue);
                         HapticFeedback.lightImpact();
                       }
                     },
-                    items: _priorities.map<DropdownMenuItem<String>>((
-                      String value,
-                    ) {
+                    items: _priorities.map<DropdownMenuItem<String>>((String value) {
                       return DropdownMenuItem<String>(
                         value: value,
                         child: Center(
-                          child: Text(
-                            value,
-                            // Optional: Color the text in the dropdown itself
-                            style: TextStyle(color: AppTheme.fogWhite),
-                          ),
+                          child: Text(value, style: const TextStyle(color: AppTheme.fogWhite)),
                         ),
                       );
                     }).toList(),

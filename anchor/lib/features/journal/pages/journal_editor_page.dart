@@ -1,6 +1,5 @@
 import 'package:anchor/core/services/encryption_service.dart';
 import 'package:anchor/core/services/online_db_service.dart';
-import 'package:anchor/core/services/session_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';

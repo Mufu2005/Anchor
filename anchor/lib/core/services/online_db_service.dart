@@ -1,6 +1,7 @@
 import 'package:anchor/core/services/encryption_service.dart';
 import 'package:anchor/core/services/session_manager.dart';
 import 'package:anchor/features/journal/models/journal_model.dart';
+import 'package:anchor/features/tasks/models/task_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/habits/models/habit_model.dart';
 import '../../features/auth/models/user_model.dart' as user_model;
@@ -205,4 +206,61 @@ class OnlineDbService {
   Future<void> deleteEntry(String EntryId) async {
     await _client.from('journals').delete().eq('id', EntryId);
   }
+
+   // ------------------------Journals---------------------------//
+
+   // ------------------------Tasks---------------------------//
+
+   Future<List<Task>> getTasks() async {
+    try {
+      final response = await _client
+          .from('tasks')
+          .select()
+          .eq('user_id', SessionManager().userId)
+          .order('time_stamp', ascending: false);
+
+      return (response as List).map((e) => Task.fromJson(e)).toList();
+    } catch (e) {
+      print("Error fetching tasks: $e");
+      return [];
+    }
+  }
+
+  // --- 2. CREATE TASK (Updated for new fields) ---
+  Future<void> createTask({
+    required String title,
+    required String description,
+    required String priority,
+    DateTime? deadline, // Maps to time_stamp in the DB
+  }) async {
+    // We removed the user check because we are in "Dev Mode"
+
+    await _client.from('tasks').insert({
+      // 'id' is omitted so Supabase can auto-generate the UUID automatically
+      'user_id': SessionManager().userId,
+      'title': title,
+      'description': description,
+      'priority': priority,
+      'is_completed': false,
+      // Convert the Dart DateTime object to a format PostgreSQL understands
+      'time_stamp': deadline?.toIso8601String(), 
+    });
+  }
+
+  // --- 3. DELETE TASK ---
+  Future<void> deleteTask(String taskId) async {
+    await _client.from('tasks').delete().eq('id', taskId);
+  }
+
+  // --- 4. MARK TASK AS COMPLETED ---
+  Future<void> markTaskAsCompleted(String taskId, bool isCompleted) async {
+    await _client
+        .from('tasks')
+        .update({
+          'is_completed': isCompleted,
+        })
+        .eq('id', taskId);
+  }
+
+
 }
